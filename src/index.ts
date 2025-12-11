@@ -1,12 +1,14 @@
 import { Client, ClientConfig } from './client';
-import { CompanyEndpoint, makeCompanyEndpoint } from './endpoints/company';
-import { OperationEndpoint, makeOperationEndpoint } from './endpoints/operation';
-import { CarEndpoint, makeCarEndpoint } from './endpoints/car';
+import { makeCompanyEndpoint } from './endpoints/company';
+import { makeOperationEndpoint } from './endpoints/operation';
+import { makeCarEndpoint } from './endpoints/car';
 
 export { Client, ClientConfig };
 export { CompanyEndpoint, CompanyDTO } from './endpoints/company';
 export { OperationEndpoint, OperationDTO } from './endpoints/operation';
 export { CarEndpoint, CarDTO } from './endpoints/car';
+export { registry, types } from './registry';
+export { Command, CommandParameter, InterfaceDoc, PropertyDoc } from './registry.types';
 
 export type DougsEndpoints = ReturnType<typeof makeEndpoints>;
 

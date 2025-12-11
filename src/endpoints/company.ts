@@ -35,6 +35,7 @@ export interface CompanyDTO {
 
 /**
  * Manage basic company information.
+ * @mountPath companies
  */
 export interface CompanyEndpoint {
     /**

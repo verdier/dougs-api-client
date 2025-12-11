@@ -25,6 +25,9 @@ export interface CarDTO {
 
 /**
  * Manage company cars.
+ * @mountPath cars
+ * @factory
+ * @param {number} companyId - ID of the company to operate on.
  */
 export interface CarEndpoint {
     /**

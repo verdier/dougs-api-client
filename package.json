@@ -5,10 +5,10 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "npm run registry && tsc",
     "test": "jest",
     "dev": "ts-node src/index.ts",
-    "docs": "ts-node src/scripts/generate-docs.ts"
+    "registry": "ts-node scripts/generate-registry.ts"
   },
   "keywords": [
     "dougs",

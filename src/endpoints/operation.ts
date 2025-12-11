@@ -85,6 +85,9 @@ export interface KilometricIndemnityCreationDTO {
 
 /**
  * Manage accounting operations.
+ * @mountPath operations
+ * @factory
+ * @param {number} companyId - ID of the company to operate on.
  */
 export interface OperationEndpoint {
     /**
