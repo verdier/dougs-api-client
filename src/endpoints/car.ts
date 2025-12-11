@@ -1,0 +1,41 @@
+import { Client } from '../client';
+
+export interface CarDTO {
+    id: number;
+    companyId: number;
+    name: string;
+    type: "corporate" | "personal";
+    isMotorcycle: boolean;
+    power?: number;
+    estimatedKilometers?: number;
+    category?: string; // "tourism"
+    fuelType?: string; // "petrol", "diesel"
+    emissionsRate?: number;
+    purchaseDate?: string; // YYYY-MM-DD
+    firstRegistrationDate?: string; // YYYY-MM-DD
+    isLeasing: boolean;
+    financingType?: string;
+    endDate?: string;
+    content?: {
+        licensePlate?: string;
+        [key: string]: any;
+    };
+    [key: string]: any;
+}
+
+/**
+ * Manage company cars.
+ */
+export interface CarEndpoint {
+    /**
+     * Retrieve all cars for the company.
+     * @returns List of cars.
+     */
+    getAll(): Promise<CarDTO[]>;
+}
+
+export const makeCarEndpoint = (client: Client, companyId: number): CarEndpoint => {
+    return {
+        getAll: () => client.get<CarDTO[]>(`/companies/${companyId}/cars`)
+    };
+};
