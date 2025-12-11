@@ -1,5 +1,9 @@
 import { Client } from '../client';
+import { mapCar, RawCarDTO } from './car.map';
 
+/**
+ * Car DTO.
+ */
 export interface CarDTO {
     id: number;
     companyId: number;
@@ -20,7 +24,6 @@ export interface CarDTO {
         licensePlate?: string;
         [key: string]: any;
     };
-    [key: string]: any;
 }
 
 /**
@@ -39,6 +42,9 @@ export interface CarEndpoint {
 
 export const makeCarEndpoint = (client: Client, companyId: number): CarEndpoint => {
     return {
-        getAll: () => client.get<CarDTO[]>(`/companies/${companyId}/cars`)
+        getAll: async () => {
+            const raw = await client.get<RawCarDTO[]>(`/companies/${companyId}/cars`);
+            return raw.map(mapCar);
+        }
     };
 };

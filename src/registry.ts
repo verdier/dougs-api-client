@@ -68,6 +68,7 @@ export const registry: Record<string, Command> = {
 export const types: Record<string, InterfaceDoc> = {
     "CarDTO": {
         "name": "CarDTO",
+        "description": "Car DTO.",
         "properties": [
             {
                 "name": "id",
@@ -153,6 +154,7 @@ export const types: Record<string, InterfaceDoc> = {
     },
     "CompanyDTO": {
         "name": "CompanyDTO",
+        "description": "Company DTO.",
         "properties": [
             {
                 "name": "id",
@@ -301,47 +303,13 @@ export const types: Record<string, InterfaceDoc> = {
             }
         ]
     },
-    "CategoryGroup": {
-        "name": "CategoryGroup",
+    "BreakdownDTO": {
+        "name": "BreakdownDTO",
+        "description": "Breakdown for an operation.",
         "properties": [
             {
                 "name": "id",
                 "type": "number",
-                "optional": false
-            },
-            {
-                "name": "name",
-                "type": "string",
-                "optional": false
-            },
-            {
-                "name": "color",
-                "type": "string | undefined",
-                "optional": true
-            },
-            {
-                "name": "miscellaneous",
-                "type": "boolean | undefined",
-                "optional": true
-            }
-        ]
-    },
-    "OperationDTO": {
-        "name": "OperationDTO",
-        "properties": [
-            {
-                "name": "id",
-                "type": "number",
-                "optional": false
-            },
-            {
-                "name": "companyId",
-                "type": "number",
-                "optional": false
-            },
-            {
-                "name": "date",
-                "type": "string",
                 "optional": false
             },
             {
@@ -350,28 +318,8 @@ export const types: Record<string, InterfaceDoc> = {
                 "optional": false
             },
             {
-                "name": "label",
-                "type": "string | undefined",
-                "optional": true
-            },
-            {
-                "name": "wording",
-                "type": "string | undefined",
-                "optional": true
-            },
-            {
-                "name": "name",
-                "type": "string | undefined",
-                "optional": true
-            },
-            {
                 "name": "categoryId",
                 "type": "number | undefined",
-                "optional": true
-            },
-            {
-                "name": "categoryGroup",
-                "type": "CategoryGroup | undefined",
                 "optional": true
             },
             {
@@ -380,24 +328,14 @@ export const types: Record<string, InterfaceDoc> = {
                 "optional": true
             },
             {
-                "name": "isBank",
-                "type": "boolean",
-                "optional": false
+                "name": "categoryGroup",
+                "type": "{ id: number; name: string; color?: string; } | undefined",
+                "optional": true
             },
             {
-                "name": "isFee",
-                "type": "boolean",
-                "optional": false
-            },
-            {
-                "name": "isExpense",
-                "type": "boolean",
-                "optional": false
-            },
-            {
-                "name": "isInvoice",
-                "type": "boolean",
-                "optional": false
+                "name": "wording",
+                "type": "string | undefined",
+                "optional": true
             },
             {
                 "name": "isInbound",
@@ -406,11 +344,6 @@ export const types: Record<string, InterfaceDoc> = {
             },
             {
                 "name": "isCounterpart",
-                "type": "boolean",
-                "optional": false
-            },
-            {
-                "name": "isKilometricIndemnity",
                 "type": "boolean",
                 "optional": false
             },
@@ -428,10 +361,56 @@ export const types: Record<string, InterfaceDoc> = {
                 "name": "vatRate",
                 "type": "number | undefined",
                 "optional": true
+            }
+        ]
+    },
+    "OperationDTO": {
+        "name": "OperationDTO",
+        "description": "Operation DTO.",
+        "properties": [
+            {
+                "name": "id",
+                "type": "number",
+                "optional": false
+            },
+            {
+                "name": "companyId",
+                "type": "number",
+                "optional": false
+            },
+            {
+                "name": "transactionId",
+                "type": "number | null | undefined",
+                "optional": true
+            },
+            {
+                "name": "date",
+                "type": "string",
+                "optional": false
+            },
+            {
+                "name": "amount",
+                "type": "number",
+                "optional": false
             },
             {
                 "name": "totalAmount",
                 "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "wording",
+                "type": "string | undefined",
+                "optional": true
+            },
+            {
+                "name": "name",
+                "type": "string | undefined",
+                "optional": true
+            },
+            {
+                "name": "memo",
+                "type": "string | undefined",
                 "optional": true
             },
             {
@@ -440,13 +419,108 @@ export const types: Record<string, InterfaceDoc> = {
                 "optional": true
             },
             {
+                "name": "deleted",
+                "type": "boolean",
+                "optional": false
+            },
+            {
+                "name": "isDraft",
+                "type": "boolean",
+                "optional": false
+            },
+            {
+                "name": "autogenerated",
+                "type": "boolean",
+                "optional": false
+            },
+            {
+                "name": "validated",
+                "type": "boolean",
+                "optional": false
+            },
+            {
+                "name": "validatedAt",
+                "type": "string | null | undefined",
+                "optional": true
+            },
+            {
+                "name": "excluded",
+                "type": "boolean",
+                "optional": false
+            },
+            {
+                "name": "exclusionReason",
+                "type": "string | null | undefined",
+                "optional": true
+            },
+            {
+                "name": "message",
+                "type": "string | null | undefined",
+                "optional": true
+            },
+            {
+                "name": "errors",
+                "type": "any[] | undefined",
+                "optional": true
+            },
+            {
+                "name": "type",
+                "type": "string",
+                "optional": false
+            },
+            {
+                "name": "types",
+                "type": "OperationType[]",
+                "optional": false
+            },
+            {
+                "name": "isInbound",
+                "type": "boolean",
+                "optional": false
+            },
+            {
+                "name": "hasVat",
+                "type": "boolean",
+                "optional": false
+            },
+            {
+                "name": "vatAmount",
+                "type": "number | null | undefined",
+                "optional": true
+            },
+            {
+                "name": "vatRate",
+                "type": "number | null | undefined",
+                "optional": true
+            },
+            {
+                "name": "creatorId",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
                 "name": "createdAt",
                 "type": "string | undefined",
                 "optional": true
             },
             {
-                "name": "associations",
+                "name": "updatedAt",
+                "type": "string | undefined",
+                "optional": true
+            },
+            {
+                "name": "breakdowns",
+                "type": "BreakdownDTO[] | undefined",
+                "optional": true
+            },
+            {
+                "name": "sourceDocumentAttachments",
                 "type": "any[] | undefined",
+                "optional": true
+            },
+            {
+                "name": "sourceDocumentCandidate",
+                "type": "any",
                 "optional": true
             }
         ]

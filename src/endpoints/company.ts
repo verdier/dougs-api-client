@@ -1,5 +1,9 @@
 import { Client } from '../client';
+import { mapCompany, RawCompanyDTO } from './company.map';
 
+/**
+ * Company DTO.
+ */
 export interface CompanyDTO {
     id: number;
     name: string;
@@ -25,12 +29,11 @@ export interface CompanyDTO {
     vatPeriod?: string;
     vatRegime?: string;
     isSubjectToVat: boolean;
-    legalFormConfig?: any; // Complex object
+    legalFormConfig?: any;
     taxRegime?: string;
     accountingYearsUrl?: string;
     accountsUrl?: string;
     operationsUrl?: string;
-    // Add other relevant URLs or flags as needed
 }
 
 /**
@@ -54,7 +57,13 @@ export interface CompanyEndpoint {
 
 export const makeCompanyEndpoint = (client: Client): CompanyEndpoint => {
     return {
-        getAll: () => client.get<CompanyDTO[]>('/companies'),
-        getOne: (id: number) => client.get<CompanyDTO>(`/companies/${id}`)
+        getAll: async () => {
+            const raw = await client.get<RawCompanyDTO[]>('/companies');
+            return raw.map(mapCompany);
+        },
+        getOne: async (id: number) => {
+            const raw = await client.get<RawCompanyDTO>(`/companies/${id}`);
+            return mapCompany(raw);
+        }
     };
 };

@@ -5,7 +5,7 @@ import { makeCarEndpoint } from './endpoints/car';
 
 export { Client, ClientConfig };
 export { CompanyEndpoint, CompanyDTO } from './endpoints/company';
-export { OperationEndpoint, OperationDTO } from './endpoints/operation';
+export { OperationEndpoint, OperationDTO, OperationType, BreakdownDTO } from './endpoints/operation';
 export { CarEndpoint, CarDTO } from './endpoints/car';
 export { registry, types } from './registry';
 export { Command, CommandParameter, InterfaceDoc, PropertyDoc } from './registry.types';
