@@ -1,4 +1,4 @@
-import { OperationDTO, OperationType, BreakdownDTO } from './operation';
+import { OperationDTO, OperationType, BreakdownDTO, SourceDocumentAttachmentDTO } from './operation';
 
 /**
  * Raw Operation DTO as returned by the Dougs API.
@@ -74,8 +74,39 @@ export interface RawOperationDTO {
     errors?: any[];
     allowUnbalanced?: boolean;
     isTotalAmountValid?: boolean;
-    sourceDocumentAttachments?: any[];
+    sourceDocumentAttachments?: RawSourceDocumentAttachmentDTO[];
     sourceDocumentCandidate?: any | null;
+}
+
+/**
+ * Raw Source Document Attachment DTO as returned by the Dougs API.
+ */
+export interface RawSourceDocumentAttachmentDTO {
+    id: number;
+    url: string;
+    filename?: string;
+    mimeType?: string;
+    size?: number;
+    createdAt?: string;
+    [key: string]: any;
+}
+
+/**
+ * Raw Breakdown Association Data DTO as returned by the Dougs API.
+ */
+export interface RawBreakdownAssociationDataDTO {
+    kilometers?: number;
+    carId?: number;
+    [key: string]: any;
+}
+
+/**
+ * Raw Breakdown Association DTO as returned by the Dougs API.
+ */
+export interface RawBreakdownAssociationDTO {
+    id?: number;
+    type?: string;
+    [key: string]: any;
 }
 
 /**
@@ -84,7 +115,7 @@ export interface RawOperationDTO {
 export interface RawBreakdownDTO {
     unitAmount?: number;
     uuid?: string;
-    associationData?: any;
+    associationData?: RawBreakdownAssociationDataDTO;
     date?: string;
     id: number;
     companyId?: number;
@@ -127,7 +158,7 @@ export interface RawBreakdownDTO {
         color?: string;
         miscellaneous?: boolean;
     };
-    associations?: any[];
+    associations?: RawBreakdownAssociationDTO[];
     hasAssociatedAccrualInvoice?: boolean;
 }
 
@@ -164,6 +195,20 @@ function extractTypes(raw: RawOperationDTO): OperationType[] {
         }
     }
     return types;
+}
+
+/**
+ * Maps raw source document attachment to SourceDocumentAttachmentDTO.
+ */
+function mapSourceDocumentAttachment(raw: RawSourceDocumentAttachmentDTO): SourceDocumentAttachmentDTO {
+    return {
+        id: raw.id,
+        url: raw.url,
+        filename: raw.filename,
+        mimeType: raw.mimeType,
+        size: raw.size,
+        createdAt: raw.createdAt,
+    };
 }
 
 /**
@@ -229,7 +274,14 @@ export function mapOperation(raw: RawOperationDTO): OperationDTO {
 
         breakdowns: raw.breakdowns?.map(mapBreakdown),
 
-        sourceDocumentAttachments: raw.sourceDocumentAttachments,
+        sourceDocumentAttachments: raw.sourceDocumentAttachments?.map(mapSourceDocumentAttachment),
         sourceDocumentCandidate: raw.sourceDocumentCandidate,
     };
+}
+
+/**
+ * Maps an array of raw API responses to filtered OperationDTO array.
+ */
+export function mapOperations(raw: RawOperationDTO[]): OperationDTO[] {
+    return raw.map(mapOperation);
 }

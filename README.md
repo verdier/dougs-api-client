@@ -7,7 +7,7 @@ A TypeScript client that provides an easy and clean way to interact with your Do
 
 ## Features
 
-- **Simple API**: Clean, typed endpoints for companies, operations, and vehicles
+- **Simple API**: Clean, typed endpoints for companies, operations, vehicles, and users
 - **Curated data model**: Exposes only relevant business data, abstracting away internal API complexity
 - **Session management**: Automatic login and session persistence
 - **TypeScript first**: Full type definitions for all DTOs
@@ -29,16 +29,23 @@ const client = new Client({
     sessionPath: '.session.json' // Optional: persists login session
 });
 
-const { companies, operations, cars } = makeEndpoints(client);
+const { companies, operations, cars, users } = makeEndpoints(client);
 
-// Get all companies
-const myCompanies = await companies.getAll();
+// Get current user information (includes company IDs)
+// This is the recommended way to obtain company IDs
+const currentUser = await users.getMe();
+console.log(`User: ${currentUser.email}`);
+console.log(`Company IDs:`, currentUser.companies.map(c => c.id));
+
+// Get details for a specific company
+const companyId = currentUser.companies[0].id;
+const company = await companies.getOne(companyId);
 
 // Get operations for a specific company
-const myOps = await operations(12345).getAll({ limit: 10 });
+const myOps = await operations({ companyId }).getAll({ limit: 10 });
 
 // Get cars for kilometric indemnities
-const myCars = await cars(12345).getAll();
+const myCars = await cars({ companyId }).getAll();
 ```
 
 ## Development & Testing

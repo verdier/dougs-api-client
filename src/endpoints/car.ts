@@ -1,5 +1,5 @@
 import { Client } from '../client';
-import { mapCar, RawCarDTO } from './car.map';
+import { mapCars } from './car.map';
 
 /**
  * Car DTO.
@@ -32,6 +32,16 @@ export interface CarDTO {
  * @factory
  * @param {number} companyId - ID of the company to operate on.
  */
+export interface CarEndpointParams {
+    companyId: number;
+}
+
+/**
+ * Manage company cars.
+ * @mountPath cars
+ * @factory
+ * @param {number} companyId - ID of the company to operate on.
+ */
 export interface CarEndpoint {
     /**
      * Retrieve all cars for the company.
@@ -40,11 +50,8 @@ export interface CarEndpoint {
     getAll(): Promise<CarDTO[]>;
 }
 
-export const makeCarEndpoint = (client: Client, companyId: number): CarEndpoint => {
+export const makeCarEndpoint = (client: Client, { companyId }: CarEndpointParams): CarEndpoint => {
     return {
-        getAll: async () => {
-            const raw = await client.get<RawCarDTO[]>(`/companies/${companyId}/cars`);
-            return raw.map(mapCar);
-        }
+        getAll: () => client.get(`/companies/${companyId}/cars`, undefined, mapCars)
     };
 };

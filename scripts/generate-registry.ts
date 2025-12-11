@@ -115,10 +115,10 @@ async function generateRegistry() {
                     ...methodParams
                 ];
 
-                const factoryArgs = factoryParams.map(fp => `args.${fp.name}`).join(', ');
+                const factoryArgsObj = factoryParams.map(fp => `${fp.name}: args.${fp.name}`).join(', ');
                 const methodArgs = methodParams.map(mp => `args.${mp.name}`).join(', ');
                 const methodCall = isFactory
-                    ? `api.${mountPath}(${factoryArgs}).${method.getName()}(${methodArgs})`
+                    ? `api.${mountPath}({ ${factoryArgsObj} }).${method.getName()}(${methodArgs})`
                     : `api.${mountPath}.${method.getName()}(${methodArgs})`;
 
                 registryCommands += `    "${commandName}": {

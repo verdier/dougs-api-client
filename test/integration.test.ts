@@ -27,7 +27,7 @@ describe('Dougs API Integration', () => {
 
         const companyId = getCompanyId();
 
-        const operations = await dougs.operations(companyId).getAll();
+        const operations = await dougs.operations({ companyId }).getAll();
         expect(Array.isArray(operations)).toBe(true);
         expect(operations.length).toBeGreaterThanOrEqual(0);
     });

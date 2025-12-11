@@ -13,7 +13,7 @@ describe('Dougs API Car Integration', () => {
 
     test('should fetch cars', async () => {
         const companyId = getCompanyId();
-        const cars = await dougs.cars(companyId).getAll();
+        const cars = await dougs.cars({ companyId }).getAll();
         console.log(`Found ${cars.length} cars`);
         expect(Array.isArray(cars)).toBe(true);
         expect(cars.length).toBeGreaterThan(0);

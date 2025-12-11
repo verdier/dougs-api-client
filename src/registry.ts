@@ -11,15 +11,7 @@ export const registry: Record<string, Command> = {
         parameters: [{"type":"number","name":"companyId","description":"ID of the company to operate on.","optional":false}],
         returnType: "Promise<CarDTO[]>",
         execute: async (api: any, args: Record<string, any>) => {
-            return api.cars(args.companyId).getAll();
-        }
-    },
-    "companies_get_all": {
-        description: "Retrieve all available companies for the authenticated user.",
-        parameters: [],
-        returnType: "Promise<CompanyDTO[]>",
-        execute: async (api: any, args: Record<string, any>) => {
-            return api.companies.getAll();
+            return api.cars({ companyId: args.companyId }).getAll();
         }
     },
     "companies_get_one": {
@@ -35,7 +27,7 @@ export const registry: Record<string, Command> = {
         parameters: [{"type":"number","name":"companyId","description":"ID of the company to operate on.","optional":false},{"name":"query","type":"OperationQuery | undefined","optional":true}],
         returnType: "Promise<OperationDTO[]>",
         execute: async (api: any, args: Record<string, any>) => {
-            return api.operations(args.companyId).getAll(args.query);
+            return api.operations({ companyId: args.companyId }).getAll(args.query);
         }
     },
     "operations_get_one": {
@@ -43,7 +35,7 @@ export const registry: Record<string, Command> = {
         parameters: [{"type":"number","name":"companyId","description":"ID of the company to operate on.","optional":false},{"name":"id","type":"number","optional":false}],
         returnType: "Promise<OperationDTO>",
         execute: async (api: any, args: Record<string, any>) => {
-            return api.operations(args.companyId).getOne(args.id);
+            return api.operations({ companyId: args.companyId }).getOne(args.id);
         }
     },
     "operations_delete": {
@@ -51,7 +43,7 @@ export const registry: Record<string, Command> = {
         parameters: [{"type":"number","name":"companyId","description":"ID of the company to operate on.","optional":false},{"name":"id","type":"number","optional":false}],
         returnType: "Promise<void>",
         execute: async (api: any, args: Record<string, any>) => {
-            return api.operations(args.companyId).delete(args.id);
+            return api.operations({ companyId: args.companyId }).delete(args.id);
         }
     },
     "operations_create_kilometric_indemnity": {
@@ -59,7 +51,15 @@ export const registry: Record<string, Command> = {
         parameters: [{"type":"number","name":"companyId","description":"ID of the company to operate on.","optional":false},{"name":"data","type":"KilometricIndemnityCreationDTO","optional":false}],
         returnType: "Promise<OperationDTO>",
         execute: async (api: any, args: Record<string, any>) => {
-            return api.operations(args.companyId).createKilometricIndemnity(args.data);
+            return api.operations({ companyId: args.companyId }).createKilometricIndemnity(args.data);
+        }
+    },
+    "users_get_me": {
+        description: "Retrieve the current authenticated user's information.\nThis is the recommended way to obtain company IDs for use with other endpoints.\nThe response includes a companies array with company IDs that can be used with operations, cars, and other company-specific endpoints.",
+        parameters: [],
+        returnType: "Promise<UserDTO>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.users.getMe();
         }
     },
 
@@ -232,72 +232,12 @@ export const types: Record<string, InterfaceDoc> = {
                 "optional": false
             },
             {
-                "name": "isIntegration",
-                "type": "boolean",
-                "optional": false
-            },
-            {
-                "name": "integrationId",
-                "type": "number | undefined",
-                "optional": true
-            },
-            {
-                "name": "hasMultipleBankAccounts",
-                "type": "boolean",
-                "optional": false
-            },
-            {
-                "name": "hasMultipleAssociates",
-                "type": "boolean",
-                "optional": false
-            },
-            {
-                "name": "hasPayroll",
-                "type": "boolean",
-                "optional": false
-            },
-            {
                 "name": "hasVat",
                 "type": "boolean",
                 "optional": false
             },
             {
-                "name": "vatPeriod",
-                "type": "string | undefined",
-                "optional": true
-            },
-            {
-                "name": "vatRegime",
-                "type": "string | undefined",
-                "optional": true
-            },
-            {
-                "name": "isSubjectToVat",
-                "type": "boolean",
-                "optional": false
-            },
-            {
-                "name": "legalFormConfig",
-                "type": "any",
-                "optional": true
-            },
-            {
                 "name": "taxRegime",
-                "type": "string | undefined",
-                "optional": true
-            },
-            {
-                "name": "accountingYearsUrl",
-                "type": "string | undefined",
-                "optional": true
-            },
-            {
-                "name": "accountsUrl",
-                "type": "string | undefined",
-                "optional": true
-            },
-            {
-                "name": "operationsUrl",
                 "type": "string | undefined",
                 "optional": true
             }
@@ -360,6 +300,42 @@ export const types: Record<string, InterfaceDoc> = {
             {
                 "name": "vatRate",
                 "type": "number | undefined",
+                "optional": true
+            }
+        ]
+    },
+    "SourceDocumentAttachmentDTO": {
+        "name": "SourceDocumentAttachmentDTO",
+        "description": "Source document attachment DTO.",
+        "properties": [
+            {
+                "name": "id",
+                "type": "number",
+                "optional": false
+            },
+            {
+                "name": "url",
+                "type": "string",
+                "optional": false
+            },
+            {
+                "name": "filename",
+                "type": "string | undefined",
+                "optional": true
+            },
+            {
+                "name": "mimeType",
+                "type": "string | undefined",
+                "optional": true
+            },
+            {
+                "name": "size",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "createdAt",
+                "type": "string | undefined",
                 "optional": true
             }
         ]
@@ -515,7 +491,7 @@ export const types: Record<string, InterfaceDoc> = {
             },
             {
                 "name": "sourceDocumentAttachments",
-                "type": "any[] | undefined",
+                "type": "SourceDocumentAttachmentDTO[] | undefined",
                 "optional": true
             },
             {
@@ -612,6 +588,27 @@ export const types: Record<string, InterfaceDoc> = {
                 "type": "number | undefined",
                 "description": "ID of the car used.",
                 "optional": true
+            }
+        ]
+    },
+    "UserDTO": {
+        "name": "UserDTO",
+        "description": "User DTO.",
+        "properties": [
+            {
+                "name": "id",
+                "type": "number",
+                "optional": false
+            },
+            {
+                "name": "email",
+                "type": "string",
+                "optional": false
+            },
+            {
+                "name": "companies",
+                "type": "{ id: number; }[]",
+                "optional": false
             }
         ]
     }

@@ -1,5 +1,5 @@
 import { Client } from '../client';
-import { mapCompany, RawCompanyDTO } from './company.map';
+import { mapCompany } from './company.map';
 
 /**
  * Company DTO.
@@ -20,20 +20,8 @@ export interface CompanyDTO {
     creationDate: string; // ISO Date
     closingDate: string; // MM-DD
     accountingStartDate: string; // ISO Date
-    isIntegration: boolean;
-    integrationId?: number;
-    hasMultipleBankAccounts: boolean;
-    hasMultipleAssociates: boolean;
-    hasPayroll: boolean;
     hasVat: boolean;
-    vatPeriod?: string;
-    vatRegime?: string;
-    isSubjectToVat: boolean;
-    legalFormConfig?: any;
     taxRegime?: string;
-    accountingYearsUrl?: string;
-    accountsUrl?: string;
-    operationsUrl?: string;
 }
 
 /**
@@ -41,12 +29,6 @@ export interface CompanyDTO {
  * @mountPath companies
  */
 export interface CompanyEndpoint {
-    /**
-     * Retrieve all available companies for the authenticated user.
-     * @returns List of companies.
-     */
-    getAll(): Promise<CompanyDTO[]>;
-
     /**
      * Retrieve details for a specific company.
      * @param id - ID of the company to retrieve.
@@ -57,13 +39,6 @@ export interface CompanyEndpoint {
 
 export const makeCompanyEndpoint = (client: Client): CompanyEndpoint => {
     return {
-        getAll: async () => {
-            const raw = await client.get<RawCompanyDTO[]>('/companies');
-            return raw.map(mapCompany);
-        },
-        getOne: async (id: number) => {
-            const raw = await client.get<RawCompanyDTO>(`/companies/${id}`);
-            return mapCompany(raw);
-        }
+        getOne: (id: number) => client.get(`/companies/${id}`, undefined, mapCompany)
     };
 };

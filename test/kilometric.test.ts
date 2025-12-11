@@ -22,10 +22,10 @@ describe('Dougs API Kilometric Indemnity Integration', () => {
 
             console.log(`Creating IK on ${date} for ${distance}km`);
 
-            const cars = await dougs.cars(companyId).getAll();
+            const cars = await dougs.cars({ companyId }).getAll();
             const car = cars.find(c => c.type === 'personal' && !c.endDate);
 
-            const op = await dougs.operations(companyId).createKilometricIndemnity({
+            const op = await dougs.operations({ companyId }).createKilometricIndemnity({
                 date,
                 distance,
                 memo: "Test Creation",
@@ -39,7 +39,7 @@ describe('Dougs API Kilometric Indemnity Integration', () => {
 
         test('should retrieve the created kilometric indemnity', async () => {
             expect(createdOperationId).toBeDefined();
-            const op = await dougs.operations(companyId).getOne(createdOperationId);
+            const op = await dougs.operations({ companyId }).getOne(createdOperationId);
             expect(op).toBeDefined();
             expect(op.id).toBe(createdOperationId);
         });
@@ -47,7 +47,7 @@ describe('Dougs API Kilometric Indemnity Integration', () => {
         test('should delete the kilometric indemnity', async () => {
             expect(createdOperationId).toBeDefined();
             console.log(`Deleting IK: ${createdOperationId}`);
-            await dougs.operations(companyId).delete(createdOperationId);
+            await dougs.operations({ companyId }).delete(createdOperationId);
             console.log('Deleted IK:', createdOperationId);
         });
 
@@ -55,7 +55,7 @@ describe('Dougs API Kilometric Indemnity Integration', () => {
             expect(createdOperationId).toBeDefined();
             console.log(`Verifying IK ${createdOperationId} is gone...`);
             try {
-                await dougs.operations(companyId).getOne(createdOperationId);
+                await dougs.operations({ companyId }).getOne(createdOperationId);
                 throw new Error("Operation should have been deleted but was found");
             } catch (e: any) {
                 console.log("Got expected error:", e.message);

@@ -178,7 +178,9 @@ export class Client {
         this.cookies.push(cookieStr);
     }
 
-    get<T>(path: string, query?: Record<string, any>): Promise<T> {
+    get<T>(path: string, query?: Record<string, any>): Promise<T>;
+    get<TMapFn extends (raw: any) => any>(path: string, query: Record<string, any> | undefined, mapFn: TMapFn): Promise<ReturnType<TMapFn>>;
+    get(path: string, query?: Record<string, any>, mapFn?: (raw: any) => any): Promise<any> {
         let url = path;
         if (query) {
             const params = new URLSearchParams();
@@ -192,11 +194,23 @@ export class Client {
                 url += (url.includes('?') ? '&' : '?') + queryString;
             }
         }
-        return this.request<T>(url, { method: "GET" });
+        if (mapFn) {
+            return this.request(url, { method: "GET" }).then(mapFn);
+        }
+        return this.request(url, { method: "GET" });
     }
 
-    post<T>(path: string, body: any): Promise<T> {
-        return this.request<T>(path, {
+    post<T>(path: string, body: any): Promise<T>;
+    post<TMapFn extends (raw: any) => any>(path: string, body: any, mapFn: TMapFn): Promise<ReturnType<TMapFn>>;
+    post(path: string, body: any, mapFn?: (raw: any) => any): Promise<any> {
+        if (mapFn) {
+            return this.request(path, {
+                method: "POST",
+                body: JSON.stringify(body),
+                headers: { "Content-Type": "application/json" }
+            }).then(mapFn);
+        }
+        return this.request(path, {
             method: "POST",
             body: JSON.stringify(body),
             headers: { "Content-Type": "application/json" }

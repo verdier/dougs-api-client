@@ -62,3 +62,10 @@ export function mapCar(raw: RawCarDTO): CarDTO {
         content: raw.content,
     };
 }
+
+/**
+ * Maps an array of raw API responses to filtered CarDTO array.
+ */
+export function mapCars(raw: RawCarDTO[]): CarDTO[] {
+    return raw.map(mapCar);
+}

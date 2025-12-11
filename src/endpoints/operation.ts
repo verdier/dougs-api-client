@@ -1,5 +1,5 @@
 import { Client } from '../client';
-import { mapOperation, RawOperationDTO } from './operation.map';
+import { mapOperation, mapOperations, RawOperationDTO } from './operation.map';
 
 /**
  * Operation types.
@@ -25,6 +25,19 @@ export type OperationType =
     | 'reconciliation'
     | 'cashRegisterDispatch'
     | 'cashRegisterFee';
+
+/**
+ * Source document attachment DTO.
+ */
+export interface SourceDocumentAttachmentDTO {
+    id: number;
+    url: string;
+    filename?: string;
+    mimeType?: string;
+    size?: number;
+    createdAt?: string;
+    [key: string]: any;
+}
 
 /**
  * Breakdown for an operation.
@@ -92,7 +105,7 @@ export interface OperationDTO {
     breakdowns?: BreakdownDTO[];
 
     // Attachments
-    sourceDocumentAttachments?: any[];
+    sourceDocumentAttachments?: SourceDocumentAttachmentDTO[];
     sourceDocumentCandidate?: any | null;
 }
 
@@ -141,6 +154,16 @@ export interface KilometricIndemnityCreationDTO {
  * @factory
  * @param {number} companyId - ID of the company to operate on.
  */
+export interface OperationEndpointParams {
+    companyId: number;
+}
+
+/**
+ * Manage accounting operations.
+ * @mountPath operations
+ * @factory
+ * @param {number} companyId - ID of the company to operate on.
+ */
 export interface OperationEndpoint {
     /**
      * Retrieve a list of operations matching the query criteria.
@@ -170,21 +193,18 @@ export interface OperationEndpoint {
     createKilometricIndemnity(data: KilometricIndemnityCreationDTO): Promise<OperationDTO>;
 }
 
-export const makeOperationEndpoint = (client: Client, companyId: number): OperationEndpoint => {
+export const makeOperationEndpoint = (client: Client, { companyId }: OperationEndpointParams): OperationEndpoint => {
     const baseUrl = `/companies/${companyId}/operations`;
+    
     return {
-        getAll: async (query?: OperationQuery) => {
-            const raw = await client.get<RawOperationDTO[]>(baseUrl, query);
-            return raw.map(mapOperation);
-        },
-        getOne: async (id: number) => {
-            const raw = await client.get<RawOperationDTO>(`${baseUrl}/${id}`);
-            return mapOperation(raw);
-        },
+        getAll: (query?: OperationQuery) => 
+            client.get(baseUrl, query, mapOperations),
+        getOne: (id: number) => 
+            client.get(`${baseUrl}/${id}`, undefined, mapOperation),
 
         delete: (id: number) => client.delete<void>(`${baseUrl}/${id}`),
 
-        createKilometricIndemnity: async (data: KilometricIndemnityCreationDTO) => {
+        createKilometricIndemnity: (data: KilometricIndemnityCreationDTO) => {
             const payload = {
                 type: 'kilometricIndemnity',
                 date: data.date,
@@ -198,8 +218,7 @@ export const makeOperationEndpoint = (client: Client, companyId: number): Operat
                     }
                 }]
             };
-            const raw = await client.post<RawOperationDTO>(baseUrl, payload);
-            return mapOperation(raw);
+            return client.post(baseUrl, payload, mapOperation);
         },
     };
 };
