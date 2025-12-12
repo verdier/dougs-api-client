@@ -29,8 +29,7 @@ const client = new Client({
     sessionPath: '.session.json' // Optional: persists login session
 });
 
-// Get current user information (includes company IDs)
-// This is the recommended way to obtain company IDs
+// Get current user information
 const currentUser = await client.api.users.getMe();
 console.log(`User: ${currentUser.email}`);
 console.log(`Company IDs:`, currentUser.companies.map(c => c.id));
@@ -41,9 +40,6 @@ const company = await client.api.companies.getOne(companyId);
 
 // Get operations for a specific company
 const myOps = await client.api.operations({ companyId }).getAll({ limit: 10 });
-
-// Get cars for kilometric indemnities
-const myCars = await client.api.cars({ companyId }).getAll();
 ```
 
 ## Development & Testing
