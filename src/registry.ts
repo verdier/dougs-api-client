@@ -10,6 +10,7 @@ export const registry: Record<string, Command> = {
         description: "Retrieve all cars for the company.",
         parameters: {
                   "companyId": {
+                            "name": "companyId",
                             "type": "number",
                             "description": "ID of the company to operate on.",
                             "optional": false
@@ -24,6 +25,7 @@ export const registry: Record<string, Command> = {
         description: "Retrieve details for a specific company.",
         parameters: {
                   "id": {
+                            "name": "id",
                             "type": "number",
                             "optional": false
                   }
@@ -37,11 +39,13 @@ export const registry: Record<string, Command> = {
         description: "Retrieve a list of operations matching the query criteria.",
         parameters: {
                   "companyId": {
+                            "name": "companyId",
                             "type": "number",
                             "description": "ID of the company to operate on.",
                             "optional": false
                   },
                   "query": {
+                            "name": "query",
                             "type": "OperationQuery | undefined",
                             "optional": true
                   }
@@ -55,11 +59,13 @@ export const registry: Record<string, Command> = {
         description: "Retrieve a single operation by ID.",
         parameters: {
                   "companyId": {
+                            "name": "companyId",
                             "type": "number",
                             "description": "ID of the company to operate on.",
                             "optional": false
                   },
                   "id": {
+                            "name": "id",
                             "type": "number",
                             "optional": false
                   }
@@ -73,11 +79,13 @@ export const registry: Record<string, Command> = {
         description: "Delete an operation.",
         parameters: {
                   "companyId": {
+                            "name": "companyId",
                             "type": "number",
                             "description": "ID of the company to operate on.",
                             "optional": false
                   },
                   "id": {
+                            "name": "id",
                             "type": "number",
                             "optional": false
                   }
@@ -91,11 +99,13 @@ export const registry: Record<string, Command> = {
         description: "Create a new kilometric indemnity operation.",
         parameters: {
                   "companyId": {
+                            "name": "companyId",
                             "type": "number",
                             "description": "ID of the company to operate on.",
                             "optional": false
                   },
                   "data": {
+                            "name": "data",
                             "type": "KilometricIndemnityCreationDTO",
                             "optional": false
                   }
@@ -526,19 +536,19 @@ export const types: Record<string, InterfaceDoc> = {
                 "optional": true
             },
             {
-                "name": "\"q-amount\"",
+                "name": "q-amount",
                 "type": "string | undefined",
                 "description": "Filter by amount. Can be an exact amount, a range (e.g. \"100-200\") or inferior/superior (e.g. \"<100\" or \">200\").",
                 "optional": true
             },
             {
-                "name": "\"q-date\"",
+                "name": "q-date",
                 "type": "string | undefined",
                 "description": "Filter by date (DD/MM/YYYY). Can be an exact date, partial date (e.g. \"01/2025\", \"2025\"), a range (e.g. \"01/01/2025-31/12/2025\") or inferior/superior (e.g. \"<01/01/2025\" or \">31/12/2025\").",
                 "optional": true
             },
             {
-                "name": "\"q-isInbound\"",
+                "name": "q-isInbound",
                 "type": "boolean | undefined",
                 "description": "Filter by inbound/outbound status.",
                 "optional": true

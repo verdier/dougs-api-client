@@ -51,8 +51,13 @@ async function generateRegistry() {
                 properties: declaration.getProperties().map(p => {
                     const propType = p.getType();
                     processType(propType);
+                    // Strip quotes from property names (e.g. "q-date" -> q-date)
+                    const rawName = p.getName();
+                    const name = rawName.startsWith('"') && rawName.endsWith('"') 
+                        ? rawName.slice(1, -1) 
+                        : rawName;
                     return {
-                        name: p.getName(),
+                        name,
                         type: propType.getText(p),
                         description: getJsDocDescription(p.getJsDocs()),
                         optional: p.hasQuestionToken()
@@ -137,9 +142,10 @@ async function generateRegistry() {
                 ];
                 
                 // Convert array to object keyed by parameter name
-                const allParamsObj: Record<string, { type: string; description?: string; optional: boolean }> = {};
+                const allParamsObj: Record<string, { name: string; type: string; description?: string; optional: boolean }> = {};
                 for (const param of allParamsArray) {
                     allParamsObj[param.name] = {
+                        name: param.name,
                         type: param.type,
                         description: param.description,
                         optional: param.optional
@@ -173,7 +179,10 @@ async function generateRegistry() {
 
     const outputPath = path.resolve(__dirname, "../src/registry.ts");
     fs.writeFileSync(outputPath, content);
-    console.log(`Registry generated at ${outputPath}`);
+    const commandCount = (registryCommands.match(/"\w+":/g) || []).length;
+    console.log(`✓ Registry generated at ${outputPath}`);
+    console.log(`  Registered ${commandCount} commands`);
+    console.log(`  Registered ${Object.keys(types).length} types`);
 }
 
 generateRegistry().catch(console.error);
