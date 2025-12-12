@@ -1,15 +1,14 @@
 import { createTestClient, getCompanyId } from './utils';
-import { Client, DougsEndpoints } from '../src/index';
+import { Client } from '../src/index';
 
 describe('Dougs API Kilometric Indemnity Integration', () => {
     jest.setTimeout(30000);
 
     let client: Client;
-    let dougs: DougsEndpoints;
     let companyId: number;
 
     beforeAll(() => {
-        ({ client, dougs } = createTestClient());
+        client = createTestClient();
         companyId = getCompanyId();
     });
 
@@ -22,10 +21,10 @@ describe('Dougs API Kilometric Indemnity Integration', () => {
 
             console.log(`Creating IK on ${date} for ${distance}km`);
 
-            const cars = await dougs.cars({ companyId }).getAll();
+            const cars = await client.api.cars({ companyId }).getAll();
             const car = cars.find(c => c.type === 'personal' && !c.endDate);
 
-            const op = await dougs.operations({ companyId }).createKilometricIndemnity({
+            const op = await client.api.operations({ companyId }).createKilometricIndemnity({
                 date,
                 distance,
                 memo: "Test Creation",
@@ -39,7 +38,7 @@ describe('Dougs API Kilometric Indemnity Integration', () => {
 
         test('should retrieve the created kilometric indemnity', async () => {
             expect(createdOperationId).toBeDefined();
-            const op = await dougs.operations({ companyId }).getOne(createdOperationId);
+            const op = await client.api.operations({ companyId }).getOne(createdOperationId);
             expect(op).toBeDefined();
             expect(op.id).toBe(createdOperationId);
         });
@@ -47,7 +46,7 @@ describe('Dougs API Kilometric Indemnity Integration', () => {
         test('should delete the kilometric indemnity', async () => {
             expect(createdOperationId).toBeDefined();
             console.log(`Deleting IK: ${createdOperationId}`);
-            await dougs.operations({ companyId }).delete(createdOperationId);
+            await client.api.operations({ companyId }).delete(createdOperationId);
             console.log('Deleted IK:', createdOperationId);
         });
 
@@ -55,7 +54,7 @@ describe('Dougs API Kilometric Indemnity Integration', () => {
             expect(createdOperationId).toBeDefined();
             console.log(`Verifying IK ${createdOperationId} is gone...`);
             try {
-                await dougs.operations({ companyId }).getOne(createdOperationId);
+                await client.api.operations({ companyId }).getOne(createdOperationId);
                 throw new Error("Operation should have been deleted but was found");
             } catch (e: any) {
                 console.log("Got expected error:", e.message);

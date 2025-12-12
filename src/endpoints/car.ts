@@ -1,5 +1,5 @@
 import { Client } from '../client';
-import { mapCars } from './car.map';
+import { mapCars, RawCarDTO } from './car.map';
 
 /**
  * Car DTO.
@@ -52,6 +52,6 @@ export interface CarEndpoint {
 
 export const makeCarEndpoint = (client: Client, { companyId }: CarEndpointParams): CarEndpoint => {
     return {
-        getAll: () => client.get(`/companies/${companyId}/cars`, undefined, mapCars)
+        getAll: () => client.get<RawCarDTO[]>(`/companies/${companyId}/cars`).then(mapCars)
     };
 };

@@ -1,5 +1,5 @@
 import { Client } from '../client';
-import { mapCompany } from './company.map';
+import { mapCompany, RawCompanyDTO } from './company.map';
 
 /**
  * Company DTO.
@@ -39,6 +39,6 @@ export interface CompanyEndpoint {
 
 export const makeCompanyEndpoint = (client: Client): CompanyEndpoint => {
     return {
-        getOne: (id: number) => client.get(`/companies/${id}`, undefined, mapCompany)
+        getOne: (id: number) => client.get<RawCompanyDTO>(`/companies/${id}`).then(mapCompany)
     };
 };

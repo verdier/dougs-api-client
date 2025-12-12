@@ -1,5 +1,5 @@
 import { Client } from '../client';
-import { mapUser } from './user.map';
+import { mapUser, RawUserDTO } from './user.map';
 
 /**
  * User DTO.
@@ -26,6 +26,6 @@ export interface UserEndpoint {
 
 export const makeUserEndpoint = (client: Client): UserEndpoint => {
     return {
-        getMe: () => client.get('/users/me', undefined, mapUser)
+        getMe: () => client.get<RawUserDTO>('/users/me').then(mapUser)
     };
 };

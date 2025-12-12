@@ -1,4 +1,4 @@
-import { Client, DougsEndpoints, makeEndpoints } from '../src/index';
+import { Client } from '../src/index';
 import dotenv from 'dotenv';
 import path from 'node:path';
 
@@ -11,7 +11,7 @@ export const getCompanyId = () => {
     return companyId;
 };
 
-export const createTestClient = (): { client: Client, dougs: DougsEndpoints } => {
+export const createTestClient = (): Client => {
     const SESSION_FILE = path.resolve(__dirname, '../.session.json');
 
     const client = new Client({
@@ -20,7 +20,5 @@ export const createTestClient = (): { client: Client, dougs: DougsEndpoints } =>
         sessionPath: SESSION_FILE
     });
 
-    const dougs = makeEndpoints(client);
-
-    return { client, dougs };
+    return client;
 };

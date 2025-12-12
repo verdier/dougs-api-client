@@ -1,19 +1,18 @@
 import { createTestClient, getCompanyId } from './utils';
-import { Client, DougsEndpoints } from '../src/index';
+import { Client } from '../src/index';
 
 describe('Dougs API Car Integration', () => {
     jest.setTimeout(30000);
 
     let client: Client;
-    let dougs: DougsEndpoints;
 
     beforeAll(() => {
-        ({ client, dougs } = createTestClient());
+        client = createTestClient();
     });
 
     test('should fetch cars', async () => {
         const companyId = getCompanyId();
-        const cars = await dougs.cars({ companyId }).getAll();
+        const cars = await client.api.cars({ companyId }).getAll();
         console.log(`Found ${cars.length} cars`);
         expect(Array.isArray(cars)).toBe(true);
         expect(cars.length).toBeGreaterThan(0);

@@ -103,17 +103,48 @@ async function generateRegistry() {
                 const returnType = method.getReturnType();
                 returnType.getTypeArguments().forEach(processType);
 
+                // Extract method parameter descriptions from JSDoc
+                const methodJsDocs = method.getJsDocs();
+                const paramDescriptions: Record<string, string> = {};
+                for (const doc of methodJsDocs) {
+                    for (const tag of doc.getTags()) {
+                        if (tag.getTagName() === 'param') {
+                            const match = tag.getText().match(/@param\s+\{([^}]+)\}\s+(\w+)\s*-\s*(.*)/);
+                            if (match) {
+                                paramDescriptions[match[2]] = match[3];
+                            }
+                        }
+                    }
+                }
+
                 const methodParams = method.getParameters().map(p => {
                     processType(p.getType());
-                    return { name: p.getName(), type: p.getType().getText(p), optional: p.hasQuestionToken() };
+                    // A parameter is optional if it has a ? token OR has a default value
+                    const isOptional = p.hasQuestionToken() || p.hasInitializer();
+                    return { 
+                        name: p.getName(), 
+                        type: p.getType().getText(p), 
+                        description: paramDescriptions[p.getName()],
+                        optional: isOptional 
+                    };
                 });
 
                 // Build command
                 const commandName = `${mountPath}_${camelToSnake(method.getName())}`;
-                const allParams = [
+                const allParamsArray = [
                     ...factoryParams.map(fp => ({ ...fp, optional: false })),
                     ...methodParams
                 ];
+                
+                // Convert array to object keyed by parameter name
+                const allParamsObj: Record<string, { type: string; description?: string; optional: boolean }> = {};
+                for (const param of allParamsArray) {
+                    allParamsObj[param.name] = {
+                        type: param.type,
+                        description: param.description,
+                        optional: param.optional
+                    };
+                }
 
                 const factoryArgsObj = factoryParams.map(fp => `${fp.name}: args.${fp.name}`).join(', ');
                 const methodArgs = methodParams.map(mp => `args.${mp.name}`).join(', ');
@@ -123,7 +154,7 @@ async function generateRegistry() {
 
                 registryCommands += `    "${commandName}": {
         description: ${JSON.stringify(getJsDocDescription(method.getJsDocs()) || "")},
-        parameters: ${JSON.stringify(allParams)},
+        parameters: ${JSON.stringify(allParamsObj, null, 12).replace(/\n/g, '\n        ')},
         returnType: "${returnType.getText(method)}",
         execute: async (api: any, args: Record<string, any>) => {
             return ${methodCall};

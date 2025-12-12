@@ -7,7 +7,7 @@ export interface CommandParameter {
 
 export interface Command {
     description?: string;
-    parameters: CommandParameter[];
+    parameters: Record<string, CommandParameter>;
     returnType: string;
     execute: (api: any, args: Record<string, any>) => Promise<any>;
 }

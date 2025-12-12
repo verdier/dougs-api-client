@@ -1,19 +1,18 @@
 import { createTestClient } from './utils';
-import { Client, DougsEndpoints } from '../src/index';
+import { Client } from '../src/index';
 import { RawUserDTO } from '../src/endpoints/user.map';
 
 describe('Dougs API User Integration', () => {
     jest.setTimeout(30000);
 
     let client: Client;
-    let dougs: DougsEndpoints;
 
     beforeAll(() => {
-        ({ client, dougs } = createTestClient());
+        client = createTestClient();
     });
 
     test('should fetch current user', async () => {
-        const user = await dougs.users.getMe();
+        const user = await client.api.users.getMe();
         expect(user).toBeDefined();
         expect(user).toHaveProperty('id');
         expect(user).toHaveProperty('email');

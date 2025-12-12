@@ -8,7 +8,13 @@ import { Command, CommandParameter, InterfaceDoc } from "./registry.types";
 export const registry: Record<string, Command> = {
     "cars_get_all": {
         description: "Retrieve all cars for the company.",
-        parameters: [{"type":"number","name":"companyId","description":"ID of the company to operate on.","optional":false}],
+        parameters: {
+                  "companyId": {
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  }
+        },
         returnType: "Promise<CarDTO[]>",
         execute: async (api: any, args: Record<string, any>) => {
             return api.cars({ companyId: args.companyId }).getAll();
@@ -16,7 +22,12 @@ export const registry: Record<string, Command> = {
     },
     "companies_get_one": {
         description: "Retrieve details for a specific company.",
-        parameters: [{"name":"id","type":"number","optional":false}],
+        parameters: {
+                  "id": {
+                            "type": "number",
+                            "optional": false
+                  }
+        },
         returnType: "Promise<CompanyDTO>",
         execute: async (api: any, args: Record<string, any>) => {
             return api.companies.getOne(args.id);
@@ -24,7 +35,17 @@ export const registry: Record<string, Command> = {
     },
     "operations_get_all": {
         description: "Retrieve a list of operations matching the query criteria.",
-        parameters: [{"type":"number","name":"companyId","description":"ID of the company to operate on.","optional":false},{"name":"query","type":"OperationQuery | undefined","optional":true}],
+        parameters: {
+                  "companyId": {
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "query": {
+                            "type": "OperationQuery | undefined",
+                            "optional": true
+                  }
+        },
         returnType: "Promise<OperationDTO[]>",
         execute: async (api: any, args: Record<string, any>) => {
             return api.operations({ companyId: args.companyId }).getAll(args.query);
@@ -32,7 +53,17 @@ export const registry: Record<string, Command> = {
     },
     "operations_get_one": {
         description: "Retrieve a single operation by ID.",
-        parameters: [{"type":"number","name":"companyId","description":"ID of the company to operate on.","optional":false},{"name":"id","type":"number","optional":false}],
+        parameters: {
+                  "companyId": {
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "id": {
+                            "type": "number",
+                            "optional": false
+                  }
+        },
         returnType: "Promise<OperationDTO>",
         execute: async (api: any, args: Record<string, any>) => {
             return api.operations({ companyId: args.companyId }).getOne(args.id);
@@ -40,7 +71,17 @@ export const registry: Record<string, Command> = {
     },
     "operations_delete": {
         description: "Delete an operation.",
-        parameters: [{"type":"number","name":"companyId","description":"ID of the company to operate on.","optional":false},{"name":"id","type":"number","optional":false}],
+        parameters: {
+                  "companyId": {
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "id": {
+                            "type": "number",
+                            "optional": false
+                  }
+        },
         returnType: "Promise<void>",
         execute: async (api: any, args: Record<string, any>) => {
             return api.operations({ companyId: args.companyId }).delete(args.id);
@@ -48,7 +89,17 @@ export const registry: Record<string, Command> = {
     },
     "operations_create_kilometric_indemnity": {
         description: "Create a new kilometric indemnity operation.",
-        parameters: [{"type":"number","name":"companyId","description":"ID of the company to operate on.","optional":false},{"name":"data","type":"KilometricIndemnityCreationDTO","optional":false}],
+        parameters: {
+                  "companyId": {
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "data": {
+                            "type": "KilometricIndemnityCreationDTO",
+                            "optional": false
+                  }
+        },
         returnType: "Promise<OperationDTO>",
         execute: async (api: any, args: Record<string, any>) => {
             return api.operations({ companyId: args.companyId }).createKilometricIndemnity(args.data);
@@ -56,7 +107,7 @@ export const registry: Record<string, Command> = {
     },
     "users_get_me": {
         description: "Retrieve the current authenticated user's information.\nThis is the recommended way to obtain company IDs for use with other endpoints.\nThe response includes a companies array with company IDs that can be used with operations, cars, and other company-specific endpoints.",
-        parameters: [],
+        parameters: {},
         returnType: "Promise<UserDTO>",
         execute: async (api: any, args: Record<string, any>) => {
             return api.users.getMe();
@@ -258,32 +309,12 @@ export const types: Record<string, InterfaceDoc> = {
                 "optional": false
             },
             {
-                "name": "categoryId",
-                "type": "number | undefined",
-                "optional": true
-            },
-            {
-                "name": "categoryWording",
-                "type": "string | undefined",
-                "optional": true
-            },
-            {
-                "name": "categoryGroup",
-                "type": "{ id: number; name: string; color?: string; } | undefined",
-                "optional": true
-            },
-            {
                 "name": "wording",
                 "type": "string | undefined",
                 "optional": true
             },
             {
                 "name": "isInbound",
-                "type": "boolean",
-                "optional": false
-            },
-            {
-                "name": "isCounterpart",
                 "type": "boolean",
                 "optional": false
             },
@@ -301,6 +332,11 @@ export const types: Record<string, InterfaceDoc> = {
                 "name": "vatRate",
                 "type": "number | undefined",
                 "optional": true
+            },
+            {
+                "name": "category",
+                "type": "{ id: number; wording: string; group?: { id: number; name: string; }; }",
+                "optional": false
             }
         ]
     },
@@ -350,16 +386,6 @@ export const types: Record<string, InterfaceDoc> = {
                 "optional": false
             },
             {
-                "name": "companyId",
-                "type": "number",
-                "optional": false
-            },
-            {
-                "name": "transactionId",
-                "type": "number | null | undefined",
-                "optional": true
-            },
-            {
                 "name": "date",
                 "type": "string",
                 "optional": false
@@ -395,37 +421,7 @@ export const types: Record<string, InterfaceDoc> = {
                 "optional": true
             },
             {
-                "name": "deleted",
-                "type": "boolean",
-                "optional": false
-            },
-            {
-                "name": "isDraft",
-                "type": "boolean",
-                "optional": false
-            },
-            {
-                "name": "autogenerated",
-                "type": "boolean",
-                "optional": false
-            },
-            {
-                "name": "validated",
-                "type": "boolean",
-                "optional": false
-            },
-            {
                 "name": "validatedAt",
-                "type": "string | null | undefined",
-                "optional": true
-            },
-            {
-                "name": "excluded",
-                "type": "boolean",
-                "optional": false
-            },
-            {
-                "name": "exclusionReason",
                 "type": "string | null | undefined",
                 "optional": true
             },
@@ -518,6 +514,12 @@ export const types: Record<string, InterfaceDoc> = {
                 "optional": true
             },
             {
+                "name": "validated",
+                "type": "boolean | undefined",
+                "description": "Filter by validation status.",
+                "optional": true
+            },
+            {
                 "name": "q",
                 "type": "string | undefined",
                 "description": "General search query string.",
@@ -526,37 +528,19 @@ export const types: Record<string, InterfaceDoc> = {
             {
                 "name": "\"q-amount\"",
                 "type": "string | undefined",
-                "description": "Filter by exact amount.",
+                "description": "Filter by amount. Can be an exact amount, a range (e.g. \"100-200\") or inferior/superior (e.g. \"<100\" or \">200\").",
                 "optional": true
             },
             {
                 "name": "\"q-date\"",
                 "type": "string | undefined",
-                "description": "Filter by date (YYYY-MM-DD).",
+                "description": "Filter by date (DD/MM/YYYY). Can be an exact date, partial date (e.g. \"01/2025\", \"2025\"), a range (e.g. \"01/01/2025-31/12/2025\") or inferior/superior (e.g. \"<01/01/2025\" or \">31/12/2025\").",
                 "optional": true
             },
             {
                 "name": "\"q-isInbound\"",
                 "type": "boolean | undefined",
                 "description": "Filter by inbound/outbound status.",
-                "optional": true
-            },
-            {
-                "name": "needsAttention",
-                "type": "boolean | undefined",
-                "description": "Filter operations requiring attention.",
-                "optional": true
-            },
-            {
-                "name": "validated",
-                "type": "boolean | undefined",
-                "description": "Filter by validation status.",
-                "optional": true
-            },
-            {
-                "name": "from",
-                "type": "string | undefined",
-                "description": "Start date for filtering.",
                 "optional": true
             }
         ]
