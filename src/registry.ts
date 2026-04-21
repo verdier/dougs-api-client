@@ -125,6 +125,21 @@ export const registry: Record<string, Command> = {
             return api.companies.getOne(args.id);
         }
     },
+    "companies_get_partners": {
+        description: "List all partners (associés) of a company with their share counts and CCA account indices.\nCross with performance_get_comptes_dassocies to resolve live CCA balances.\nUseful to determine ownership structure (who owns what %) and identify partner IDs.\nKnown companyIds: LV Consulting=2887, SCI Bois de Vavres=20064, SCI Satya=185000.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "Dougs company ID (LVC=2887, BDV=20064, Satya=185000).",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<PartnerDTO[]>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.companies.getPartners(args.companyId);
+        }
+    },
     "operations_get_all": {
         description: "Retrieve a list of operations matching the query criteria.",
         parameters: {
