@@ -323,4 +323,29 @@ export class Client {
             method: "DELETE",
         });
     }
+
+    /**
+     * Downloads a file by path (e.g. `/files/<uuid>/actions/download`), following
+     * the Dougs 302 redirect to AWS S3. Returns the raw bytes plus metadata.
+     *
+     * @param path - File path relative to base URL, or a full URL.
+     */
+    async downloadFile(path: string): Promise<{ buffer: Buffer; contentType: string; filename?: string }> {
+        const url = path.startsWith('http') ? path : `${this.baseUrl}${path}`;
+        const headers = this.buildHeaders();
+        const response = await fetch(url, { method: 'GET', headers, redirect: 'follow' });
+        if (!response.ok) {
+            const errorText = await response.text().catch(() => '');
+            throw new Error(
+                `Download failed: ${response.status} ${response.statusText}${errorText ? ` - ${errorText.slice(0, 200)}` : ''}`
+            );
+        }
+        const buffer = Buffer.from(await response.arrayBuffer());
+        const contentType = response.headers.get('content-type') ?? 'application/octet-stream';
+        // Try to extract filename from Content-Disposition header
+        const disposition = response.headers.get('content-disposition') ?? '';
+        const m = disposition.match(/filename\*?="?([^";]+)"?/i);
+        const filename = m ? decodeURIComponent(m[1]) : undefined;
+        return { buffer, contentType, filename };
+    }
 }

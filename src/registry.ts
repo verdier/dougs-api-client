@@ -205,6 +205,446 @@ export const registry: Record<string, Command> = {
             return api.operations({ companyId: args.companyId }).createKilometricIndemnity(args.data);
         }
     },
+    "performance_list_series": {
+        description: "List all accounting series available for `getSerieValues()`.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<AccountingSerieDTO[]>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).listSeries();
+        }
+    },
+    "performance_get_serie_values": {
+        description: "Fetch a time-series of values for a given accounting serie.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "serieId": {
+                            "name": "serieId",
+                            "type": "string | number",
+                            "optional": false
+                  },
+                  "query": {
+                            "name": "query",
+                            "type": "PerformanceYearQuery",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<unknown>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).getSerieValues(args.serieId, args.query);
+        }
+    },
+    "performance_get_chiffre_daffaires": {
+        description: "Chiffre d'affaires monthly breakdown for a fiscal year.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "query": {
+                            "name": "query",
+                            "type": "PerformanceYearQuery",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<StatsComparisonDTO<unknown>>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).getChiffreDAffaires(args.query);
+        }
+    },
+    "performance_get_compte_de_resultat": {
+        description: "Structured compte de résultat (P&L) with all sub-groups expanded.\nRicher than `accounting.getIncomeStatement()` – includes the detailed\nbalances the Dougs \"Performance\" tab renders.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "query": {
+                            "name": "query",
+                            "type": "PerformanceYearQuery",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<StatsComparisonDTO<unknown>>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).getCompteDeResultat(args.query);
+        }
+    },
+    "performance_get_resultat_dexploitation": {
+        description: "Résultat d'exploitation (EBIT) breakdown.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "query": {
+                            "name": "query",
+                            "type": "PerformanceYearQuery",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<StatsComparisonDTO<unknown>>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).getResultatDExploitation(args.query);
+        }
+    },
+    "performance_get_charges_dexploitation": {
+        description: "Charges d'exploitation breakdown.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "query": {
+                            "name": "query",
+                            "type": "PerformanceYearQuery",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<StatsComparisonDTO<unknown>>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).getChargesDExploitation(args.query);
+        }
+    },
+    "performance_get_flux_de_tresorerie": {
+        description: "Cash-flow statement (flux de trésorerie).",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "query": {
+                            "name": "query",
+                            "type": "PerformanceYearQuery",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<StatsComparisonDTO<unknown>>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).getFluxDeTresorerie(args.query);
+        }
+    },
+    "performance_get_fonds_propres": {
+        description: "Fonds propres / equity breakdown.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "query": {
+                            "name": "query",
+                            "type": "PerformanceYearQuery",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<StatsComparisonDTO<unknown>>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).getFondsPropres(args.query);
+        }
+    },
+    "performance_get_tresorerie": {
+        description: "Live treasury stats.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "query": {
+                            "name": "query",
+                            "type": "PerformanceYearQuery",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<StatsComparisonDTO<unknown>>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).getTresorerie(args.query);
+        }
+    },
+    "performance_get_repartition_des_charges": {
+        description: "Expense breakdown.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "query": {
+                            "name": "query",
+                            "type": "PerformanceYearQuery",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<StatsComparisonDTO<unknown>>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).getRepartitionDesCharges(args.query);
+        }
+    },
+    "performance_get_comptes_dassocies": {
+        description: "Comptes d'associés (associate accounts) breakdown.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "query": {
+                            "name": "query",
+                            "type": "PerformanceYearQuery",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<StatsComparisonDTO<unknown>>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).getComptesDAssocies(args.query);
+        }
+    },
+    "performance_get_autres_reserves_reports_anouveaux": {
+        description: "Autres réserves & reports à nouveau.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "query": {
+                            "name": "query",
+                            "type": "PerformanceYearQuery",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<StatsComparisonDTO<unknown>>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).getAutresReservesReportsANouveaux(args.query);
+        }
+    },
+    "performance_get_suivi_tva": {
+        description: "VAT status snapshot.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "query": {
+                            "name": "query",
+                            "type": "PerformanceYearQuery",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<SuiviTvaDTO>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).getSuiviTva(args.query);
+        }
+    },
+    "performance_get_suivi_impots_societes": {
+        description: "IS (corporate income tax) status snapshot.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "query": {
+                            "name": "query",
+                            "type": "PerformanceYearQuery",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<SuiviImpotsSocietesDTO>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).getSuiviImpotsSocietes(args.query);
+        }
+    },
+    "performance_get_suivi_cfe": {
+        description: "CFE status snapshot.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "query": {
+                            "name": "query",
+                            "type": "PerformanceYearQuery",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<SuiviCfeDTO>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).getSuiviCfe(args.query);
+        }
+    },
+    "performance_get_social_charges": {
+        description: "Social charges (cotisations) totals for the company.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<SocialChargesDTO>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).getSocialCharges();
+        }
+    },
+    "performance_get_tns_social_charges": {
+        description: "TNS social charges.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<StatsPayload>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).getTnsSocialCharges();
+        }
+    },
+    "performance_get_remunerations": {
+        description: "Rémunérations + PUMA/retraite/IJ thresholds.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "query": {
+                            "name": "query",
+                            "type": "PerformanceYearQuery",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<RemunerationsDTO>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).getRemunerations(args.query);
+        }
+    },
+    "performance_get_remunerations_for_accounting_year": {
+        description: "Rémunérations breakdown for the selected accounting year.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "query": {
+                            "name": "query",
+                            "type": "PerformanceYearQuery",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<StatsPayload>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).getRemunerationsForAccountingYear(args.query);
+        }
+    },
+    "performance_get_aging_balance": {
+        description: "Aging balance of customer invoices.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<AgingBalanceDTO>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).getAgingBalance();
+        }
+    },
+    "performance_get_suppliers_charges": {
+        description: "Suppliers charges over a custom window.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "query": {
+                            "name": "query",
+                            "type": "SupplierChargesQuery",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<StatsPayload>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.performance({ companyId: args.companyId }).getSuppliersCharges(args.query);
+        }
+    },
+    "prestations_list": {
+        description: "List all prestations (customer deliveries) of the company.\nIncludes completed and in-progress prestations, with their final\ndocuments, billing invoice items and workflow steps.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<PrestationDTO[]>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.prestations({ companyId: args.companyId }).list();
+        }
+    },
+    "prestations_get_document_download_path": {
+        description: "Build the downloadable file URL (relative to the Dougs API base URL)\nfor a prestation document. Typically yields a 302 redirect to a signed\nAWS S3 URL when followed while authenticated.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "fileUuid": {
+                            "name": "fileUuid",
+                            "type": "string",
+                            "optional": false
+                  }
+        },
+        returnType: "string",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.prestations({ companyId: args.companyId }).getDocumentDownloadPath(args.fileUuid);
+        }
+    },
     "users_get_me": {
         description: "Retrieve the current authenticated user's information.\nThis is the recommended way to obtain company IDs for use with other endpoints.\nThe response includes a companies array with company IDs that can be used with operations, cars, and other company-specific endpoints.",
         parameters: {},
@@ -1071,6 +1511,492 @@ export const types: Record<string, InterfaceDoc> = {
                 "name": "carId",
                 "type": "number | undefined",
                 "description": "ID of the car used.",
+                "optional": true
+            }
+        ]
+    },
+    "AccountingSerieDTO": {
+        "name": "AccountingSerieDTO",
+        "description": "Entry of the accounting series catalogue (returned by `listSeries()`).\nEach serie can later be fetched via `getSerieValues()`.",
+        "properties": [
+            {
+                "name": "id",
+                "type": "string | number | undefined",
+                "optional": true
+            },
+            {
+                "name": "name",
+                "type": "string | undefined",
+                "optional": true
+            },
+            {
+                "name": "label",
+                "type": "string | undefined",
+                "optional": true
+            },
+            {
+                "name": "namespace",
+                "type": "string | undefined",
+                "optional": true
+            },
+            {
+                "name": "categoryGroupLabel",
+                "type": "string | undefined",
+                "optional": true
+            }
+        ]
+    },
+    "PerformanceYearQuery": {
+        "name": "PerformanceYearQuery",
+        "description": "Query: fiscal-year-scoped stats accept (at minimum) an accountingYearId.\nSome also accept `showPreviousAccountingYear`.",
+        "properties": [
+            {
+                "name": "accountingYearId",
+                "type": "number",
+                "description": "Target a specific fiscal year. Required by most stats endpoints.",
+                "optional": false
+            },
+            {
+                "name": "showPreviousAccountingYear",
+                "type": "boolean | undefined",
+                "description": "Ask Dougs to also return previous-year figures.",
+                "optional": true
+            }
+        ]
+    },
+    "StatsComparisonDTO": {
+        "name": "StatsComparisonDTO",
+        "description": "Detailed balance pair (single period + previous period).\nStructure as returned by Dougs for all `/stats/*` endpoints that compare\nthe current fiscal year to the previous one.",
+        "properties": [
+            {
+                "name": "current",
+                "type": "T",
+                "optional": false
+            },
+            {
+                "name": "previous",
+                "type": "T | undefined",
+                "optional": true
+            }
+        ]
+    },
+    "SuiviTvaDTO": {
+        "name": "SuiviTvaDTO",
+        "description": "VAT status snapshot.",
+        "properties": [
+            {
+                "name": "turnover",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "threshold",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "nextPayment",
+                "type": "unknown",
+                "optional": true
+            },
+            {
+                "name": "nextDeclarations",
+                "type": "unknown[] | undefined",
+                "optional": true
+            }
+        ]
+    },
+    "SuiviImpotsSocietesDTO": {
+        "name": "SuiviImpotsSocietesDTO",
+        "description": "Corporate income tax (IS) status snapshot.",
+        "properties": [
+            {
+                "name": "value",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "paidIs",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "date",
+                "type": "string | undefined",
+                "optional": true
+            },
+            {
+                "name": "nextPayment",
+                "type": "unknown",
+                "optional": true
+            },
+            {
+                "name": "nextDeclarations",
+                "type": "unknown[] | undefined",
+                "optional": true
+            }
+        ]
+    },
+    "SuiviCfeDTO": {
+        "name": "SuiviCfeDTO",
+        "description": "CFE (Cotisation Foncière des Entreprises) status snapshot.",
+        "properties": [
+            {
+                "name": "currentCfe",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "yearsSinceRegistration",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "previousCfeAmount",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "estimatedCfeAmount",
+                "type": "number | undefined",
+                "optional": true
+            }
+        ]
+    },
+    "SocialChargesDTO": {
+        "name": "SocialChargesDTO",
+        "description": "Charges sociales (cotisations) for the company's employees / TNS.",
+        "properties": [
+            {
+                "name": "minSocialCharges",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "maxSocialCharges",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "totalRemuneration",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "dsnFile",
+                "type": "unknown",
+                "optional": true
+            },
+            {
+                "name": "dsnTotal",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "employees",
+                "type": "unknown[] | undefined",
+                "optional": true
+            }
+        ]
+    },
+    "RemunerationsDTO": {
+        "name": "RemunerationsDTO",
+        "description": "Rémunération thresholds (seuils PUMA, retraite, IJ) + partners data.",
+        "properties": [
+            {
+                "name": "thresholdPuma",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "thresholdPumaDate",
+                "type": "string | undefined",
+                "optional": true
+            },
+            {
+                "name": "thresholdRetirement",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "thresholdRetirementDate",
+                "type": "string | undefined",
+                "optional": true
+            },
+            {
+                "name": "thresholdIJ",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "thresholdIJDate",
+                "type": "string | undefined",
+                "optional": true
+            },
+            {
+                "name": "partners",
+                "type": "unknown[] | undefined",
+                "optional": true
+            }
+        ]
+    },
+    "AgingBalanceDTO": {
+        "name": "AgingBalanceDTO",
+        "description": "Aging balance (balance âgée) – breakdown of unpaid invoices by age buckets.",
+        "properties": [
+            {
+                "name": "customerRanges",
+                "type": "unknown",
+                "optional": true
+            },
+            {
+                "name": "globalRanges",
+                "type": "unknown",
+                "optional": true
+            }
+        ]
+    },
+    "SupplierChargesQuery": {
+        "name": "SupplierChargesQuery",
+        "description": "Query for `getSupplierCharges()` – custom window with previous-window comparison.",
+        "properties": [
+            {
+                "name": "startDate",
+                "type": "string",
+                "optional": false
+            },
+            {
+                "name": "endDate",
+                "type": "string",
+                "optional": false
+            },
+            {
+                "name": "previousStartDate",
+                "type": "string | undefined",
+                "optional": true
+            },
+            {
+                "name": "previousEndDate",
+                "type": "string | undefined",
+                "optional": true
+            }
+        ]
+    },
+    "PrestationAssigneeDTO": {
+        "name": "PrestationAssigneeDTO",
+        "description": "Profile of the Dougs team member assigned to the prestation.",
+        "properties": [
+            {
+                "name": "fullName",
+                "type": "string | undefined",
+                "optional": true
+            },
+            {
+                "name": "email",
+                "type": "string | undefined",
+                "optional": true
+            },
+            {
+                "name": "phone",
+                "type": "string | null | undefined",
+                "optional": true
+            }
+        ]
+    },
+    "PrestationStepDTO": {
+        "name": "PrestationStepDTO",
+        "description": "One step/milestone inside a prestation workflow.",
+        "properties": [
+            {
+                "name": "title",
+                "type": "string | undefined",
+                "optional": true
+            },
+            {
+                "name": "completedAt",
+                "type": "string | null | undefined",
+                "optional": true
+            }
+        ]
+    },
+    "PrestationDocumentDTO": {
+        "name": "PrestationDocumentDTO",
+        "description": "Reference to a document attached to a prestation.\nThe file can be downloaded via `/files/<uuid>/actions/download` (returns a 302\nto a signed S3 URL) when a uuid is present, or via the `url` relative path.",
+        "properties": [
+            {
+                "name": "id",
+                "type": "number | undefined",
+                "description": "Document record id in Dougs (may differ from fileId / fileUuid).",
+                "optional": true
+            },
+            {
+                "name": "fileId",
+                "type": "number | undefined",
+                "description": "Internal fileId in Dougs.",
+                "optional": true
+            },
+            {
+                "name": "downloadUrl",
+                "type": "string | undefined",
+                "description": "UUID-based download URL, relative to the Dougs API. Use with `downloadFile(url)`.",
+                "optional": true
+            },
+            {
+                "name": "fileUuid",
+                "type": "string | undefined",
+                "description": "File UUID extracted from `downloadUrl` (convenient for downloads).",
+                "optional": true
+            },
+            {
+                "name": "name",
+                "type": "string | undefined",
+                "description": "Human-readable filename.",
+                "optional": true
+            }
+        ]
+    },
+    "PrestationBillingInvoiceItemDTO": {
+        "name": "PrestationBillingInvoiceItemDTO",
+        "description": "Billing line item attached to a prestation (when the prestation is billed\nas a unit of a subscription invoice).",
+        "properties": [
+            {
+                "name": "id",
+                "type": "number",
+                "optional": false
+            },
+            {
+                "name": "billingInvoiceId",
+                "type": "number",
+                "optional": false
+            },
+            {
+                "name": "billingInvoiceNumber",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "fullDescription",
+                "type": "string | undefined",
+                "optional": true
+            },
+            {
+                "name": "amount",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "quantity",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "totalAmount",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "totalAmountIncludingTaxes",
+                "type": "number | undefined",
+                "optional": true
+            },
+            {
+                "name": "isDraft",
+                "type": "boolean | undefined",
+                "optional": true
+            },
+            {
+                "name": "paidAt",
+                "type": "string | null | undefined",
+                "optional": true
+            }
+        ]
+    },
+    "PrestationDTO": {
+        "name": "PrestationDTO",
+        "description": "A \"prestation\" (\"customer delivery\" in Dougs terminology) is a unit of\nwork the Dougs team performs for the company: a monthly payslip, an annual\naccount approval (PV d'AG), a balance sheet closing, a VAT declaration, a\nheadquarter transfer, etc.",
+        "properties": [
+            {
+                "name": "id",
+                "type": "number",
+                "description": "Dougs-internal id (unique).",
+                "optional": false
+            },
+            {
+                "name": "companyId",
+                "type": "number",
+                "description": "Company the prestation is attached to.",
+                "optional": false
+            },
+            {
+                "name": "title",
+                "type": "string | undefined",
+                "description": "Free-text human title of the prestation (e.g. \"Bulletins de paie du mois d'avril\").",
+                "optional": true
+            },
+            {
+                "name": "code",
+                "type": "string",
+                "description": "Stable business code (e.g. `social:payslip`, `legal:accountApproval`).",
+                "optional": false
+            },
+            {
+                "name": "category",
+                "type": "string",
+                "description": "Broad category (e.g. `agoa`, `socialManagement`, `balanceSheet`).",
+                "optional": false
+            },
+            {
+                "name": "department",
+                "type": "string | undefined",
+                "description": "Team department in charge (e.g. `legal`, `social`, `accounting`, `customer`).",
+                "optional": true
+            },
+            {
+                "name": "description",
+                "type": "string | null | undefined",
+                "description": "Optional extra description.",
+                "optional": true
+            },
+            {
+                "name": "dueDate",
+                "type": "string | null | undefined",
+                "description": "Deadline (ISO date-time).",
+                "optional": true
+            },
+            {
+                "name": "completedAt",
+                "type": "string | null | undefined",
+                "description": "Completion timestamp (null if not yet completed).",
+                "optional": true
+            },
+            {
+                "name": "assignee",
+                "type": "PrestationAssigneeDTO | undefined",
+                "description": "Dougs team member currently assigned.",
+                "optional": true
+            },
+            {
+                "name": "steps",
+                "type": "PrestationStepDTO[] | undefined",
+                "description": "Workflow milestones.",
+                "optional": true
+            },
+            {
+                "name": "finalDocuments",
+                "type": "PrestationDocumentDTO[]",
+                "description": "Final deliverable documents (PDFs).",
+                "optional": false
+            },
+            {
+                "name": "documentProvisions",
+                "type": "PrestationDocumentDTO[]",
+                "description": "Documents provided by the customer.",
+                "optional": false
+            },
+            {
+                "name": "billingInvoiceItems",
+                "type": "PrestationBillingInvoiceItemDTO[] | undefined",
+                "description": "Billing invoice items attached to this prestation.",
                 "optional": true
             }
         ]
