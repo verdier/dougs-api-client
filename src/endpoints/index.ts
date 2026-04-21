@@ -6,6 +6,7 @@ import { makeUserEndpoint, UserEndpoint } from './user';
 import { makeAccountingEndpoint, AccountingEndpoint } from './accounting';
 import { makePrestationsEndpoint, PrestationsEndpoint } from './prestations';
 import { makePerformanceEndpoint, PerformanceEndpoint } from './performance';
+import { makeInvoiceEndpoint, InvoiceEndpoint } from './invoices';
 
 export const makeEndpoints = (client: Client) => {
     return {
@@ -16,6 +17,7 @@ export const makeEndpoints = (client: Client) => {
         accounting: ({ companyId }: { companyId: number }) => makeAccountingEndpoint(client, { companyId }),
         prestations: ({ companyId }: { companyId: number }) => makePrestationsEndpoint(client, { companyId }),
         performance: ({ companyId }: { companyId: number }) => makePerformanceEndpoint(client, { companyId }),
+        invoices: ({ companyId }: { companyId: number }) => makeInvoiceEndpoint(client, { companyId }),
     };
 };
 

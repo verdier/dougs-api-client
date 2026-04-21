@@ -668,6 +668,88 @@ export const registry: Record<string, Command> = {
             return api.users.getMe();
         }
     },
+    "invoices_list_sales": {
+        description: "List all sales invoices (factures de vente) for the company.\nReturns invoices with client info, amounts, payment status, and file download paths.\nSupports pagination via page/limit query parameters.\nKnown companyIds: LV Consulting=2887, SCI Bois de Vavres=20064, SCI Satya=185000.",
+        parameters: {
+            "companyId": {
+                "name": "companyId",
+                "type": "number",
+                "description": "ID of the company to operate on.",
+                "optional": false
+            },
+            "query": {
+                "name": "query",
+                "type": "SalesInvoiceQuery | undefined",
+                "optional": true
+            }
+        },
+        returnType: "Promise<SalesInvoiceDTO[]>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.invoices({ companyId: args.companyId }).listSalesInvoices(args.query);
+        }
+    },
+    "invoices_get_sales": {
+        description: "Get a single sales invoice (facture de vente) by its UUID.",
+        parameters: {
+            "companyId": {
+                "name": "companyId",
+                "type": "number",
+                "description": "ID of the company to operate on.",
+                "optional": false
+            },
+            "id": {
+                "name": "id",
+                "type": "string",
+                "description": "UUID of the sales invoice.",
+                "optional": false
+            }
+        },
+        returnType: "Promise<SalesInvoiceDTO>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.invoices({ companyId: args.companyId }).getSalesInvoice(args.id);
+        }
+    },
+    "invoices_list_purchases": {
+        description: "List all vendor/purchase invoices (factures d'achat) for the company.\nReturns invoices with supplier info, amounts, payment status, and file download paths.\nSupports pagination via page/limit query parameters.\nKnown companyIds: LV Consulting=2887, SCI Bois de Vavres=20064, SCI Satya=185000.",
+        parameters: {
+            "companyId": {
+                "name": "companyId",
+                "type": "number",
+                "description": "ID of the company to operate on.",
+                "optional": false
+            },
+            "query": {
+                "name": "query",
+                "type": "VendorInvoiceQuery | undefined",
+                "optional": true
+            }
+        },
+        returnType: "Promise<VendorInvoiceDTO[]>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.invoices({ companyId: args.companyId }).listVendorInvoices(args.query);
+        }
+    },
+    "invoices_get_purchase": {
+        description: "Get a single vendor/purchase invoice (facture d'achat) by its UUID.",
+        parameters: {
+            "companyId": {
+                "name": "companyId",
+                "type": "number",
+                "description": "ID of the company to operate on.",
+                "optional": false
+            },
+            "id": {
+                "name": "id",
+                "type": "string",
+                "description": "UUID of the vendor invoice.",
+                "optional": false
+            }
+        },
+        returnType: "Promise<VendorInvoiceDTO>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.invoices({ companyId: args.companyId }).getVendorInvoice(args.id);
+        }
+    },
 
 };
 
