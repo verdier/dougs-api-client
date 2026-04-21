@@ -6,6 +6,96 @@
 import { Command, CommandParameter, InterfaceDoc } from "./registry.types";
 
 export const registry: Record<string, Command> = {
+    "accounting_get_fiscal_years": {
+        description: "Retrieve the list of fiscal years of the company, ordered chronologically.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<AccountingYearDTO[]>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.accounting({ companyId: args.companyId }).getFiscalYears();
+        }
+    },
+    "accounting_get_fiscal_year": {
+        description: "Retrieve a single fiscal year with document references (bilan PDF,\ntax filings, FEC export, etc.).",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "yearId": {
+                            "name": "yearId",
+                            "type": "number",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<AccountingYearDetailDTO>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.accounting({ companyId: args.companyId }).getFiscalYear(args.yearId);
+        }
+    },
+    "accounting_get_income_statement": {
+        description: "Retrieve the structured income statement (compte de résultat) for a\nfiscal year. Returns year-to-date cumulatives, monthly breakdown, and\nprevious-year comparison.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "query": {
+                            "name": "query",
+                            "type": "IncomeStatementQuery | undefined",
+                            "optional": true
+                  }
+        },
+        returnType: "Promise<IncomeStatementDTO>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.accounting({ companyId: args.companyId }).getIncomeStatement(args.query);
+        }
+    },
+    "accounting_get_treasury_accounts": {
+        description: "Retrieve the current treasury accounts (bank + savings) with live balances.",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<TreasuryAccountDTO[]>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.accounting({ companyId: args.companyId }).getTreasuryAccounts();
+        }
+    },
+    "accounting_get_company_summary": {
+        description: "Retrieve the narrative company summary for a given fiscal year\n(legal form, capital, directors, activity, tax regime, …).",
+        parameters: {
+                  "companyId": {
+                            "name": "companyId",
+                            "type": "number",
+                            "description": "ID of the company to operate on.",
+                            "optional": false
+                  },
+                  "yearId": {
+                            "name": "yearId",
+                            "type": "number",
+                            "optional": false
+                  }
+        },
+        returnType: "Promise<CompanySummaryDTO>",
+        execute: async (api: any, args: Record<string, any>) => {
+            return api.accounting({ companyId: args.companyId }).getCompanySummary(args.yearId);
+        }
+    },
     "cars_get_all": {
         description: "Retrieve all cars for the company.",
         parameters: {
@@ -127,6 +217,406 @@ export const registry: Record<string, Command> = {
 };
 
 export const types: Record<string, InterfaceDoc> = {
+    "AccountingYearDTO": {
+        "name": "AccountingYearDTO",
+        "description": "Fiscal / accounting year summary.",
+        "properties": [
+            {
+                "name": "id",
+                "type": "number",
+                "optional": false
+            },
+            {
+                "name": "companyId",
+                "type": "number",
+                "optional": false
+            },
+            {
+                "name": "accountingIndex",
+                "type": "number",
+                "description": "0-based index of the accounting year (0 = first).",
+                "optional": false
+            },
+            {
+                "name": "closingTaskId",
+                "type": "number | undefined",
+                "description": "ID of the closing task in Dougs backoffice.",
+                "optional": true
+            },
+            {
+                "name": "openingDate",
+                "type": "string",
+                "description": "ISO date (YYYY-MM-DD).",
+                "optional": false
+            },
+            {
+                "name": "closingDate",
+                "type": "string",
+                "description": "ISO date (YYYY-MM-DD).",
+                "optional": false
+            },
+            {
+                "name": "closed",
+                "type": "boolean",
+                "description": "Whether the year is officially closed (bilan filed).",
+                "optional": false
+            },
+            {
+                "name": "isCompanyFirstAccountingYear",
+                "type": "boolean | undefined",
+                "description": "True if no previous accounting year exists.",
+                "optional": true
+            },
+            {
+                "name": "accountingType",
+                "type": "\"cash\" | \"accrual\" | undefined",
+                "description": "Cash vs accrual accounting regime.",
+                "optional": true
+            },
+            {
+                "name": "isLate",
+                "type": "boolean | undefined",
+                "description": "True if closing is late.",
+                "optional": true
+            },
+            {
+                "name": "liquidationDate",
+                "type": "string | null | undefined",
+                "description": "Liquidation date if the year ended by liquidation.",
+                "optional": true
+            }
+        ]
+    },
+    "AccountingYearDocumentDTO": {
+        "name": "AccountingYearDocumentDTO",
+        "description": "Reference to a balance-sheet PDF attached to an accounting year.",
+        "properties": [
+            {
+                "name": "uuid",
+                "type": "string | undefined",
+                "description": "File UUID (use with /files/<uuid>/actions/download).",
+                "optional": true
+            },
+            {
+                "name": "url",
+                "type": "string | undefined",
+                "description": "Download URL relative to apiServerUrl.",
+                "optional": true
+            },
+            {
+                "name": "name",
+                "type": "string | undefined",
+                "description": "Filename as stored in Dougs.",
+                "optional": true
+            },
+            {
+                "name": "mimeType",
+                "type": "string | undefined",
+                "description": "MIME type.",
+                "optional": true
+            },
+            {
+                "name": "bookmarks",
+                "type": "{ label: string; pages: number[]; }[] | undefined",
+                "description": "Page-level bookmarks (e.g. \"Bilan Actif\", \"Bilan Passif\", \"Compte de résultat\").",
+                "optional": true
+            }
+        ]
+    },
+    "AccountingYearDetailDTO": {
+        "name": "AccountingYearDetailDTO",
+        "description": "Full accounting year with document references (used to download the bilan PDF).",
+        "properties": [
+            {
+                "name": "effectiveClosingDate",
+                "type": "string | undefined",
+                "description": "Effective closing date (may differ from `closingDate` on liquidation).",
+                "optional": true
+            },
+            {
+                "name": "fiscalDayCount",
+                "type": "number | undefined",
+                "description": "Number of days in the fiscal year.",
+                "optional": true
+            },
+            {
+                "name": "isCurrent",
+                "type": "boolean | undefined",
+                "description": "True if this is the currently-active year.",
+                "optional": true
+            },
+            {
+                "name": "isShifted",
+                "type": "boolean | undefined",
+                "description": "True if the fiscal year is shifted (not calendar year).",
+                "optional": true
+            },
+            {
+                "name": "accountingSurveyUrl",
+                "type": "string | undefined",
+                "description": "URL of the closing survey in the Dougs web app.",
+                "optional": true
+            },
+            {
+                "name": "companyUrl",
+                "type": "string | undefined",
+                "description": "URL of the company in the Dougs web app.",
+                "optional": true
+            },
+            {
+                "name": "balanceSheetDocuments",
+                "type": "AccountingYearDocumentDTO[]",
+                "description": "Liasse fiscale PDF(s) (actif, passif, compte de résultat, annexes).",
+                "optional": false
+            },
+            {
+                "name": "taxReportDocuments",
+                "type": "AccountingYearDocumentDTO[]",
+                "description": "Tax filing EDI documents.",
+                "optional": false
+            },
+            {
+                "name": "fecExports",
+                "type": "AccountingYearDocumentDTO[]",
+                "description": "FEC export file(s).",
+                "optional": false
+            },
+            {
+                "name": "documents",
+                "type": "AccountingYearDocumentDTO[]",
+                "description": "Other supporting documents.",
+                "optional": false
+            },
+            {
+                "name": "finalPrints",
+                "type": "AccountingYearDocumentDTO[]",
+                "description": "Final print bundles (PDFs).",
+                "optional": false
+            }
+        ]
+    },
+    "IncomeStatementPeriodDTO": {
+        "name": "IncomeStatementPeriodDTO",
+        "description": "Monthly breakdown of the income statement.",
+        "properties": [
+            {
+                "name": "date",
+                "type": "string",
+                "description": "Period start date (ISO).",
+                "optional": false
+            },
+            {
+                "name": "accountingYearId",
+                "type": "number | undefined",
+                "description": "Accounting year this period belongs to.",
+                "optional": true
+            },
+            {
+                "name": "groups",
+                "type": "Record<string, IncomeStatementGroupDTO>",
+                "description": "Aggregates for the period.",
+                "optional": false
+            }
+        ]
+    },
+    "IncomeStatementDTO": {
+        "name": "IncomeStatementDTO",
+        "description": "Compte de résultat – structured P&L for a given fiscal year.",
+        "properties": [
+            {
+                "name": "accountingYear",
+                "type": "AccountingYearDTO",
+                "description": "The accounting year this statement belongs to.",
+                "optional": false
+            },
+            {
+                "name": "periods",
+                "type": "IncomeStatementPeriodDTO[]",
+                "description": "Monthly breakdown (one entry per month within the analysis window).",
+                "optional": false
+            },
+            {
+                "name": "cumulativeData",
+                "type": "IncomeStatementCumulativeDTO",
+                "description": "Year-to-date cumulative totals.",
+                "optional": false
+            },
+            {
+                "name": "previousYearCumulativeData",
+                "type": "IncomeStatementCumulativeDTO | undefined",
+                "description": "Previous accounting year totals for comparison (if available).",
+                "optional": true
+            },
+            {
+                "name": "analysisMinDate",
+                "type": "string",
+                "description": "Analysis window start (ISO).",
+                "optional": false
+            },
+            {
+                "name": "analysisMaxDate",
+                "type": "string",
+                "description": "Analysis window end (ISO).",
+                "optional": false
+            },
+            {
+                "name": "previousSales",
+                "type": "number | undefined",
+                "description": "Year-over-year sales (previous year).",
+                "optional": true
+            },
+            {
+                "name": "previousCharges",
+                "type": "number | undefined",
+                "description": "Year-over-year charges (previous year).",
+                "optional": true
+            },
+            {
+                "name": "corporateIncomeTaxes",
+                "type": "number | undefined",
+                "description": "Estimated corporate income taxes.",
+                "optional": true
+            }
+        ]
+    },
+    "IncomeStatementQuery": {
+        "name": "IncomeStatementQuery",
+        "description": "Query parameters for `getIncomeStatement`.",
+        "properties": [
+            {
+                "name": "accountingYearId",
+                "type": "number | undefined",
+                "description": "Target a specific fiscal year (defaults to the current year if omitted).",
+                "optional": true
+            }
+        ]
+    },
+    "TreasuryAccountDTO": {
+        "name": "TreasuryAccountDTO",
+        "description": "Treasury / bank account with live balance.",
+        "properties": [
+            {
+                "name": "id",
+                "type": "number",
+                "optional": false
+            },
+            {
+                "name": "name",
+                "type": "string",
+                "description": "Short account name (e.g. \"CIC\").",
+                "optional": false
+            },
+            {
+                "name": "subName",
+                "type": "string | undefined",
+                "description": "Detailed account name including type.",
+                "optional": true
+            },
+            {
+                "name": "type",
+                "type": "string",
+                "description": "Account type (synchronizedAccount, savingsAccount, …).",
+                "optional": false
+            },
+            {
+                "name": "subtype",
+                "type": "string | undefined",
+                "description": "Account subtype (checking, savings, …).",
+                "optional": true
+            },
+            {
+                "name": "accountNumber",
+                "type": "string",
+                "description": "Plan-comptable number (e.g. \"512001\").",
+                "optional": false
+            },
+            {
+                "name": "number",
+                "type": "string | undefined",
+                "description": "Masked IBAN/account number.",
+                "optional": true
+            },
+            {
+                "name": "balance",
+                "type": "number",
+                "description": "Current balance (euros).",
+                "optional": false
+            },
+            {
+                "name": "debit",
+                "type": "number | undefined",
+                "description": "Cumulative debit total.",
+                "optional": true
+            },
+            {
+                "name": "credit",
+                "type": "number | undefined",
+                "description": "Cumulative credit total.",
+                "optional": true
+            },
+            {
+                "name": "currency",
+                "type": "string | undefined",
+                "description": "Currency code (e.g. \"EUR\").",
+                "optional": true
+            },
+            {
+                "name": "hidden",
+                "type": "boolean | undefined",
+                "description": "Whether the account is hidden from the dashboard.",
+                "optional": true
+            },
+            {
+                "name": "closedAt",
+                "type": "string | null | undefined",
+                "description": "Date when the account was closed (null if still active).",
+                "optional": true
+            },
+            {
+                "name": "memo",
+                "type": "string | null | undefined",
+                "description": "Free-text memo.",
+                "optional": true
+            }
+        ]
+    },
+    "CompanySummaryBlockDTO": {
+        "name": "CompanySummaryBlockDTO",
+        "description": "Narrative description block in a company summary.",
+        "properties": [
+            {
+                "name": "title",
+                "type": "string | null | undefined",
+                "optional": true
+            },
+            {
+                "name": "type",
+                "type": "string | undefined",
+                "optional": true
+            },
+            {
+                "name": "data",
+                "type": "string[]",
+                "optional": false
+            }
+        ]
+    },
+    "CompanySummaryDTO": {
+        "name": "CompanySummaryDTO",
+        "description": "Textual company summary for a given fiscal year.",
+        "properties": [
+            {
+                "name": "title",
+                "type": "string",
+                "optional": false
+            },
+            {
+                "name": "blocks",
+                "type": "CompanySummaryBlockDTO[]",
+                "optional": false
+            }
+        ]
+    },
     "CarDTO": {
         "name": "CarDTO",
         "description": "Car DTO.",

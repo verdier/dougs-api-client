@@ -6,6 +6,21 @@ export { CompanyEndpoint, CompanyDTO } from './endpoints/company';
 export { OperationEndpoint, OperationDTO, OperationType, BreakdownDTO, SourceDocumentAttachmentDTO } from './endpoints/operation';
 export { CarEndpoint, CarDTO } from './endpoints/car';
 export { UserEndpoint, UserDTO } from './endpoints/user';
+export {
+    AccountingEndpoint,
+    AccountingYearDTO,
+    AccountingYearDetailDTO,
+    AccountingYearDocumentDTO,
+    IncomeStatementDTO,
+    IncomeStatementGroupDTO,
+    IncomeStatementBalanceDTO,
+    IncomeStatementPeriodDTO,
+    IncomeStatementCumulativeDTO,
+    IncomeStatementQuery,
+    TreasuryAccountDTO,
+    CompanySummaryDTO,
+    CompanySummaryBlockDTO,
+} from './endpoints/accounting';
 export { registry, types } from './registry';
 export { Command, CommandParameter, InterfaceDoc, PropertyDoc } from './registry.types';
 
