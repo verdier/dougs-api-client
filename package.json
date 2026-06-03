@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
+    "prepare": "npm run build",
     "clean": "rm -rf dist",
     "registry": "ts-node scripts/generate-registry.ts",
     "build": "npm run clean && npm run registry && tsc",
