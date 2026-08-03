@@ -1,4 +1,4 @@
-import { Client } from '../client';
+import { Client, type DownloadedFile } from '../client';
 import { mapOperation, mapOperations, RawOperationDTO } from './operation.map';
 
 /**
@@ -167,6 +167,9 @@ export interface OperationEndpoint {
      */
     getOne(id: number): Promise<OperationDTO>;
 
+    /** Download a source-document attachment selected from the operation metadata. */
+    downloadSourceDocumentAttachment(operationId: number, attachmentId: number): Promise<DownloadedFile>;
+
     /**
      * Delete an operation.
      * @param id - ID of the operation to delete.
@@ -183,12 +186,20 @@ export interface OperationEndpoint {
 
 export const makeOperationEndpoint = (client: Client, { companyId }: OperationEndpointParams): OperationEndpoint => {
     const baseUrl = `/companies/${companyId}/operations`;
+    const getOne = (id: number) => client.get<RawOperationDTO>(`${baseUrl}/${id}`).then(mapOperation);
     
     return {
         getAll: (query?: OperationQuery) => 
             client.get<RawOperationDTO[]>(baseUrl, query).then(mapOperations),
-        getOne: (id: number) => 
-            client.get<RawOperationDTO>(`${baseUrl}/${id}`).then(mapOperation),
+        getOne,
+        downloadSourceDocumentAttachment: async (operationId: number, attachmentId: number) => {
+            const operation = await getOne(operationId);
+            const attachment = operation.sourceDocumentAttachments?.find(candidate => candidate.id === attachmentId);
+            if (!attachment || typeof attachment.url !== 'string' || attachment.url.trim().length === 0) {
+                throw new Error("Operation has no matching source-document attachment.");
+            }
+            return client.downloadFile(attachment.url);
+        },
 
         delete: (id: number) => client.delete<void>(`${baseUrl}/${id}`),
 

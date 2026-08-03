@@ -7,6 +7,11 @@ const DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:145
 const MAX_TRUSTED_REDIRECTS = 5;
 const MAX_DOWNLOAD_REDIRECTS = 5;
 
+/** Hard cap for a downloaded evidence body (25 MiB), including chunked bodies. */
+export const MAX_DOWNLOAD_BYTES = 25 * 1024 * 1024;
+/** Maximum time allowed to consume one evidence response body. */
+export const DOWNLOAD_BODY_TIMEOUT_MS = 60_000;
+
 export interface ClientConfig {
     email: string;
     password: string;
@@ -27,6 +32,15 @@ export interface Logger {
 export interface AuthState {
     token: string | null;
     cookies: string[];
+}
+
+/** A file fetched through Client.downloadFile's authenticated redirect boundary. */
+export interface DownloadedFile {
+    /** Discriminant used by transport adapters to identify binary downloads. */
+    kind: 'downloaded-file';
+    buffer: Buffer;
+    contentType: string;
+    filename?: string;
 }
 
 function buildDefaultHeaders(origin: string): Record<string, string> {
@@ -332,21 +346,28 @@ export class Client {
     /**
      * Downloads a Dougs file without allowing credentials to cross an origin
      * boundary. The initial trusted request is made manually; a signed S3/CDN
-     * redirect is then fetched with no Dougs headers or cookies.
+     * redirect is then fetched with no Dougs headers or cookies. Evidence bodies
+     * are streamed into memory only up to MAX_DOWNLOAD_BYTES and have a bounded
+     * total body-read time.
      */
-    async downloadFile(path: string): Promise<{ buffer: Buffer; contentType: string; filename?: string }> {
+    async downloadFile(path: string): Promise<DownloadedFile> {
         let url = this.resolveTrustedUrl(path);
         let redirects = 0;
 
         while (true) {
             const authenticated = url.origin === this.trustedOrigin;
-            const response = await fetch(url, {
-                method: 'GET',
-                // Do not rely on fetch's implementation-specific redirect header
-                // stripping. External downloads intentionally receive no headers.
-                headers: authenticated ? this.buildHeaders() : {},
-                redirect: 'manual',
-            });
+            let response: Response;
+            try {
+                response = await fetch(url, {
+                    method: 'GET',
+                    // Do not rely on fetch's implementation-specific redirect header
+                    // stripping. External downloads intentionally receive no headers.
+                    headers: authenticated ? this.buildHeaders() : {},
+                    redirect: 'manual',
+                });
+            } catch {
+                throw new Error("Download failed.");
+            }
 
             if (response.status >= 300 && response.status < 400) {
                 if (redirects >= MAX_DOWNLOAD_REDIRECTS) {
@@ -371,12 +392,69 @@ export class Client {
 
             if (!response.ok) throw new Error(`Download failed (HTTP ${response.status}).`);
 
-            const buffer = Buffer.from(await response.arrayBuffer());
+            const buffer = await this.readDownloadBody(response);
             const contentType = response.headers.get('content-type') ?? 'application/octet-stream';
             const disposition = response.headers.get('content-disposition') ?? '';
             const match = disposition.match(/filename\*?="?([^";]+)"?/i);
-            const filename = match ? decodeURIComponent(match[1]) : undefined;
-            return { buffer, contentType, filename };
+            let filename: string | undefined;
+            if (match) {
+                try {
+                    filename = decodeURIComponent(match[1]);
+                } catch {
+                    // An invalid filename encoding must not make a successful,
+                    // otherwise-safe download fail or expose response details.
+                }
+            }
+            return { kind: 'downloaded-file', buffer, contentType, filename };
+        }
+    }
+
+    private async readDownloadBody(response: Response): Promise<Buffer> {
+        const contentLength = response.headers.get('content-length');
+        if (contentLength !== null && /^\d+$/.test(contentLength) && Number(contentLength) > MAX_DOWNLOAD_BYTES) {
+            void response.body?.cancel().catch(() => undefined);
+            throw new Error("Download failed: file exceeds the maximum size.");
+        }
+        if (!response.body) return Buffer.alloc(0);
+
+        const reader = response.body.getReader();
+        const chunks: Uint8Array[] = [];
+        let length = 0;
+        let timeoutId: ReturnType<typeof setTimeout> | undefined;
+        const timeout = new Promise<never>((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error("Download failed: body read timed out.")), DOWNLOAD_BODY_TIMEOUT_MS);
+        });
+
+        try {
+            while (true) {
+                const { done, value } = await Promise.race([reader.read(), timeout]);
+                if (done) break;
+                length += value.byteLength;
+                if (length > MAX_DOWNLOAD_BYTES) {
+                    void reader.cancel().catch(() => undefined);
+                    throw new Error("Download failed: file exceeds the maximum size.");
+                }
+                chunks.push(value);
+            }
+            return Buffer.concat(chunks, length);
+        } catch (error) {
+            void reader.cancel().catch(() => undefined);
+            if (error instanceof Error && (
+                error.message === "Download failed: body read timed out." ||
+                error.message === "Download failed: file exceeds the maximum size."
+            )) {
+                throw error;
+            }
+            throw new Error("Download failed while reading the response body.");
+        } finally {
+            if (timeoutId) clearTimeout(timeoutId);
+            // A timed-out read may still be unwinding its cancellation; never
+            // let a pending read mask the intentionally generic timeout error.
+            try {
+                reader.releaseLock();
+            } catch {
+                // The response is being abandoned and was already cancelled.
+            }
         }
     }
 }

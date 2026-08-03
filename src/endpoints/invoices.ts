@@ -1,4 +1,4 @@
-import { Client } from '../client';
+import { Client, type DownloadedFile } from '../client';
 
 // ---------------------------------------------------------------------------
 // Shared sub-shapes
@@ -189,6 +189,8 @@ export interface InvoiceEndpoint {
     listPurchases(query?: VendorInvoiceQuery): Promise<VendorInvoiceDTO[]>;
     /** Get a single purchase/vendor invoice by UUID. */
     getPurchase(id: string): Promise<VendorInvoiceDTO>;
+    /** Download the evidence file attached to a purchase/vendor invoice. */
+    downloadPurchaseEvidence(id: string): Promise<DownloadedFile>;
 }
 
 export const makeInvoiceEndpoint = (
@@ -196,14 +198,23 @@ export const makeInvoiceEndpoint = (
     { companyId }: InvoiceEndpointParams,
 ): InvoiceEndpoint => {
     const base = `/companies/${companyId}`;
+    const invoicePath = (collection: 'sales-invoices' | 'vendor-invoices', id: string) =>
+        `${base}/${collection}/${encodeURIComponent(id)}`;
+    const getPurchase = (id: string) => client.get<VendorInvoiceDTO>(invoicePath('vendor-invoices', id));
     return {
         listSales: (query?) =>
             client.get<SalesInvoiceDTO[]>(`${base}/sales-invoices`, query as Record<string, unknown>),
         getSale: (id) =>
-            client.get<SalesInvoiceDTO>(`${base}/sales-invoices/${id}`),
+            client.get<SalesInvoiceDTO>(invoicePath('sales-invoices', id)),
         listPurchases: (query?) =>
             client.get<VendorInvoiceDTO[]>(`${base}/vendor-invoices`, query as Record<string, unknown>),
-        getPurchase: (id) =>
-            client.get<VendorInvoiceDTO>(`${base}/vendor-invoices/${id}`),
+        getPurchase,
+        downloadPurchaseEvidence: async (id) => {
+            const invoice = await getPurchase(id);
+            if (typeof invoice.filePath !== 'string' || invoice.filePath.trim().length === 0) {
+                throw new Error("Purchase invoice has no downloadable evidence file.");
+            }
+            return client.downloadFile(invoice.filePath);
+        },
     };
 };

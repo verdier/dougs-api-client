@@ -34,7 +34,7 @@ const LOCAL_READ = Object.freeze({ readOnly: true, destructive: false, idempoten
 
 const companyId = z.number().describe("ID of the company to operate on.");
 const yearId = z.number().describe("ID of the fiscal year.");
-const invoiceId = z.string().describe("Invoice UUID.");
+const invoiceId = z.string().uuid().describe("Canonical invoice UUID.");
 
 /** Every public action input object rejects unknown keys, including nested objects. */
 const strictObject = <Shape extends z.ZodRawShape>(shape: Shape) => z.object(shape).strict();
@@ -53,6 +53,11 @@ const invoiceListInput = strictObject({
     query: strictObject({ page: z.number().optional(), limit: z.number().optional() }).optional(),
 });
 const invoiceGetInput = strictObject({ companyId, id: invoiceId });
+const operationAttachmentDownloadInput = strictObject({
+    companyId,
+    operationId: z.number().describe("Operation ID."),
+    attachmentId: z.number().describe("Source-document attachment ID."),
+});
 const operationQuery = strictObject({
     limit: z.number().optional().describe("Max number of results to return."),
     offset: z.number().optional().describe("Number of results to skip."),
@@ -153,6 +158,10 @@ export const actions = {
         name: "invoices_get_purchase", description: "Get a single purchase/vendor invoice by UUID.", inputSchema: invoiceGetInput, safety: READ,
         execute: (api, { companyId, id }) => api.invoices({ companyId }).getPurchase(id),
     }),
+    invoices_download_purchase_evidence: defineAction({
+        name: "invoices_download_purchase_evidence", description: "Download the evidence file attached to a purchase/vendor invoice.", inputSchema: invoiceGetInput, safety: READ,
+        execute: (api, { companyId, id }) => api.invoices({ companyId }).downloadPurchaseEvidence(id),
+    }),
     operations_get_all: defineAction({
         name: "operations_get_all", description: "Retrieve a list of operations matching the query criteria.", inputSchema: operationListInput, safety: READ,
         execute: (api, { companyId, query }) => api.operations({ companyId }).getAll(query),
@@ -160,6 +169,11 @@ export const actions = {
     operations_get_one: defineAction({
         name: "operations_get_one", description: "Retrieve a single operation by ID.", inputSchema: operationIdInput, safety: READ,
         execute: (api, { companyId, id }) => api.operations({ companyId }).getOne(id),
+    }),
+    operations_download_source_document_attachment: defineAction({
+        name: "operations_download_source_document_attachment", description: "Download a source-document attachment selected by ID from an operation.", inputSchema: operationAttachmentDownloadInput, safety: READ,
+        execute: (api, { companyId, operationId, attachmentId }) =>
+            api.operations({ companyId }).downloadSourceDocumentAttachment(operationId, attachmentId),
     }),
     operations_delete: defineAction({
         name: "operations_delete", description: "Delete an operation.", inputSchema: operationIdInput, safety: DELETE,

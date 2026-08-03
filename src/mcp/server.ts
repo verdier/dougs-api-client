@@ -5,7 +5,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import dotenv from "dotenv";
-import { actions, Client, type ActionDefinition, type ActionSafety, type DougsEndpoints } from "../index";
+import { actions, Client, type ActionDefinition, type ActionSafety, type DougsEndpoints, type DownloadedFile } from "../index";
 
 interface PackageMetadata {
     version?: unknown;
@@ -40,6 +40,41 @@ function getSafeToolErrorMessage(): string {
     return "Request could not be completed. Check the tool input and Dougs session, then retry.";
 }
 
+const EVIDENCE_MIME_TYPES = new Set([
+    "application/pdf",
+    "image/avif",
+    "image/bmp",
+    "image/gif",
+    "image/jpeg",
+    "image/png",
+    "image/tiff",
+    "image/webp",
+]);
+
+function isDownloadedFile(value: unknown): value is DownloadedFile {
+    if (typeof value !== "object" || value === null) return false;
+    const file = value as Partial<DownloadedFile>;
+    return file.kind === "downloaded-file"
+        && Buffer.isBuffer(file.buffer)
+        && typeof file.contentType === "string"
+        && (file.filename === undefined || typeof file.filename === "string");
+}
+
+/** Only expose inert, normalized evidence media types to MCP clients. */
+export function normalizeEvidenceMimeType(value: string): string {
+    const type = value.split(";", 1)[0].trim().toLowerCase();
+    if (!/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(type)) return "application/octet-stream";
+    return EVIDENCE_MIME_TYPES.has(type) ? type : "application/octet-stream";
+}
+
+function getDownloadResourceUri(filename?: string): string {
+    const safeFilename = (filename ?? "download")
+        .replace(/[\\/\u0000-\u001F\u007F]/g, "_")
+        .trim()
+        .slice(0, 255) || "download";
+    return `dougs://downloads/${encodeURIComponent(safeFilename)}`;
+}
+
 export function registerActions(
     server: McpServer,
     api: DougsEndpoints,
@@ -61,6 +96,18 @@ export function registerActions(
                 try {
                     const parsedInput = action.inputSchema.parse(input);
                     const result = await action.execute(api, parsedInput);
+                    if (isDownloadedFile(result)) {
+                        return {
+                            content: [{
+                                type: "resource" as const,
+                                resource: {
+                                    uri: getDownloadResourceUri(result.filename),
+                                    mimeType: normalizeEvidenceMimeType(result.contentType),
+                                    blob: result.buffer.toString("base64"),
+                                },
+                            }],
+                        };
+                    }
                     return {
                         content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) ?? "null" }],
                     };

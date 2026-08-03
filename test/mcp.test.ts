@@ -17,8 +17,10 @@ const EXPECTED_ACTIONS = [
     "invoices_get_sale",
     "invoices_list_purchases",
     "invoices_get_purchase",
+    "invoices_download_purchase_evidence",
     "operations_get_all",
     "operations_get_one",
+    "operations_download_source_document_attachment",
     "operations_delete",
     "operations_create_kilometric_indemnity",
     "performance_list_series",
@@ -59,7 +61,7 @@ async function connectMcp(server: McpServer): Promise<McpClient> {
 }
 
 describe("declarative action contract", () => {
-    test("keeps the exact canonical set of 40 stable action names", () => {
+    test("keeps the exact canonical set of 42 stable action names", () => {
         expect(Object.keys(actions)).toEqual(EXPECTED_ACTIONS);
         expect(Object.values(actions).map(action => action.name)).toEqual(EXPECTED_ACTIONS);
     });
@@ -78,6 +80,12 @@ describe("declarative action contract", () => {
         });
         expect(actions.operations_create_kilometric_indemnity.safety).toEqual({
             readOnly: false, destructive: false, idempotent: false, openWorld: true,
+        });
+        expect(actions.invoices_download_purchase_evidence.safety).toEqual({
+            readOnly: true, destructive: false, idempotent: true, openWorld: true,
+        });
+        expect(actions.operations_download_source_document_attachment.safety).toEqual({
+            readOnly: true, destructive: false, idempotent: true, openWorld: true,
         });
     });
 
@@ -104,6 +112,18 @@ describe("declarative action contract", () => {
             companyId: 42,
             data: { date: "2025-01-01", distance: 10, extra: true },
         }).success).toBe(false);
+        expect(actions.invoices_download_purchase_evidence.inputSchema.safeParse({
+            companyId: 42, id: "invoice-uuid", extra: true,
+        }).success).toBe(false);
+        expect(actions.invoices_download_purchase_evidence.inputSchema.safeParse({
+            companyId: 42, id: "00000000-0000-4000-8000-000000000001",
+        }).success).toBe(true);
+        for (const id of ["../other-resource", "5a7083c0/other-resource", "not-a-uuid"]) {
+            expect(actions.invoices_download_purchase_evidence.inputSchema.safeParse({ companyId: 42, id }).success).toBe(false);
+        }
+        expect(actions.operations_download_source_document_attachment.inputSchema.safeParse({
+            companyId: 42, operationId: 7, attachmentId: 9, extra: true,
+        }).success).toBe(false);
     });
 
     test("dispatches parsed inputs directly to endpoint methods", async () => {
@@ -120,14 +140,28 @@ describe("declarative action contract", () => {
         expect(getAll).toHaveBeenCalledWith({ limit: 5 });
     });
 
-    test("preserves canonical invoice action dispatch", async () => {
-        const getPurchase = jest.fn().mockResolvedValue({ id: "invoice-uuid" });
-        const invoices = jest.fn().mockReturnValue({ getPurchase });
-        const api = mockApi({ invoices } as Partial<DougsEndpoints>);
+    test("dispatches evidence downloads directly to endpoint methods", async () => {
+        const downloadPurchaseEvidence = jest.fn().mockResolvedValue({
+            kind: "downloaded-file", buffer: Buffer.from("invoice"), contentType: "application/pdf",
+        });
+        const invoices = jest.fn().mockReturnValue({ downloadPurchaseEvidence });
+        const downloadSourceDocumentAttachment = jest.fn().mockResolvedValue({
+            kind: "downloaded-file", buffer: Buffer.from("attachment"), contentType: "application/pdf",
+        });
+        const operations = jest.fn().mockReturnValue({ downloadSourceDocumentAttachment });
+        const api = mockApi({ invoices, operations } as Partial<DougsEndpoints>);
 
-        await actions.invoices_get_purchase.execute(api, { companyId: 42, id: "invoice-uuid" });
+        await actions.invoices_download_purchase_evidence.execute(api, {
+            companyId: 42, id: "00000000-0000-4000-8000-000000000001",
+        });
+        await actions.operations_download_source_document_attachment.execute(api, {
+            companyId: 42, operationId: 7, attachmentId: 9,
+        });
+
         expect(invoices).toHaveBeenCalledWith({ companyId: 42 });
-        expect(getPurchase).toHaveBeenCalledWith("invoice-uuid");
+        expect(downloadPurchaseEvidence).toHaveBeenCalledWith("00000000-0000-4000-8000-000000000001");
+        expect(operations).toHaveBeenCalledWith({ companyId: 42 });
+        expect(downloadSourceDocumentAttachment).toHaveBeenCalledWith(7, 9);
     });
 });
 
@@ -159,6 +193,74 @@ describe("MCP adapter", () => {
             content: [{ type: "text", text: "Error: Request could not be completed. Check the tool input and Dougs session, then retry." }],
             isError: true,
         });
+    });
+
+    test("returns a new evidence-download action as a base64 MCP resource", async () => {
+        const downloadPurchaseEvidence = jest.fn().mockResolvedValue({
+            kind: "downloaded-file",
+            buffer: Buffer.from("PDF"),
+            contentType: "Application/PDF; charset=binary",
+            filename: "/synthetic\u0000.pdf",
+        });
+        const invoices = jest.fn().mockReturnValue({ downloadPurchaseEvidence });
+        const server = createMcpServer(mockApi({ invoices } as Partial<DougsEndpoints>));
+        const client = await connectMcp(server);
+
+        try {
+            const result = await client.callTool({
+                name: "invoices_download_purchase_evidence",
+                arguments: {
+                    companyId: 42,
+                    id: "00000000-0000-4000-8000-000000000001",
+                },
+            });
+
+            expect(result).toMatchObject({
+                content: [{
+                    type: "resource",
+                    resource: {
+                        uri: "dougs://downloads/_synthetic_.pdf",
+                        mimeType: "application/pdf",
+                        blob: "UERG",
+                    },
+                }],
+            });
+            expect(downloadPurchaseEvidence).toHaveBeenCalledWith("00000000-0000-4000-8000-000000000001");
+        } finally {
+            await client.close();
+            await server.close();
+        }
+    });
+
+    test.each(["text/html", "image/svg+xml", "not a mime type", "application/x-unknown"])(
+        "maps unsafe evidence MIME type %s to application/octet-stream",
+        async (contentType) => {
+            const downloadPurchaseEvidence = jest.fn().mockResolvedValue({
+                kind: "downloaded-file", buffer: Buffer.from("synthetic"), contentType,
+            });
+            const invoices = jest.fn().mockReturnValue({ downloadPurchaseEvidence });
+            const server = new McpServer({ name: "test", version: "1.0.0" });
+            registerActions(server, mockApi({ invoices } as Partial<DougsEndpoints>));
+            const handler = (server as any)._registeredTools.invoices_download_purchase_evidence.handler;
+
+            const result = await handler({
+                companyId: 42,
+                id: "00000000-0000-4000-8000-000000000001",
+            });
+
+            expect(result.content[0].resource.mimeType).toBe("application/octet-stream");
+        },
+    );
+
+    test("leaves arbitrary buffer-shaped results as JSON", async () => {
+        const getMe = jest.fn().mockResolvedValue({ buffer: Buffer.from("synthetic"), contentType: "application/pdf" });
+        const server = new McpServer({ name: "test", version: "1.0.0" });
+        registerActions(server, mockApi({ users: { getMe } }));
+        const handler = (server as any)._registeredTools.users_get_me.handler;
+
+        const result = await handler({});
+
+        expect(result.content[0].type).toBe("text");
     });
 
     test("validates direct registered handler input before endpoint dispatch", async () => {
