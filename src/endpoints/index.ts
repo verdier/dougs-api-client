@@ -1,0 +1,24 @@
+import { Client } from '../client';
+import { makeCompanyEndpoint, CompanyEndpoint } from './company';
+import { makeOperationEndpoint, OperationEndpoint } from './operation';
+import { makeCarEndpoint, CarEndpoint } from './car';
+import { makeUserEndpoint, UserEndpoint } from './user';
+import { makeAccountingEndpoint, AccountingEndpoint } from './accounting';
+import { makePrestationsEndpoint, PrestationsEndpoint } from './prestations';
+import { makePerformanceEndpoint, PerformanceEndpoint } from './performance';
+import { makeInvoiceEndpoint, InvoiceEndpoint } from './invoices';
+
+export const makeEndpoints = (client: Client) => {
+    return {
+        users: makeUserEndpoint(client),
+        companies: makeCompanyEndpoint(client),
+        operations: ({ companyId }: { companyId: number }) => makeOperationEndpoint(client, { companyId }),
+        cars: ({ companyId }: { companyId: number }) => makeCarEndpoint(client, { companyId }),
+        accounting: ({ companyId }: { companyId: number }) => makeAccountingEndpoint(client, { companyId }),
+        prestations: ({ companyId }: { companyId: number }) => makePrestationsEndpoint(client, { companyId }),
+        performance: ({ companyId }: { companyId: number }) => makePerformanceEndpoint(client, { companyId }),
+        invoices: ({ companyId }: { companyId: number }) => makeInvoiceEndpoint(client, { companyId }),
+    };
+};
+
+export type Endpoints = ReturnType<typeof makeEndpoints>;
