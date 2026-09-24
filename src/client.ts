@@ -1,11 +1,29 @@
 import * as fs from 'node:fs';
 import { promises as fsPromises } from 'node:fs';
 import { makeEndpoints, Endpoints } from './endpoints';
+import { MUTATION_OUTCOME_UNKNOWN, MUTATION_REJECTED_NO_REPLAY } from './mutation-errors';
 
 const DEFAULT_BASE_URL = "https://app.dougs.fr";
 const DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:145.0) Gecko/20100101 Firefox/145.0";
 const MAX_TRUSTED_REDIRECTS = 5;
 const MAX_DOWNLOAD_REDIRECTS = 5;
+const OPERATION_MEMO_TAG_SLUG = /^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$/;
+
+/** Internal sanitized HTTP failure metadata for mutation outcome classification. */
+class RequestError extends Error {
+    constructor(public readonly status: number) {
+        super(`Dougs request failed (HTTP ${status}).`);
+        this.name = 'RequestError';
+    }
+}
+
+function normalizeOperationMemoTag(value: string | undefined): string | undefined {
+    if (value === undefined) return undefined;
+    if (typeof value !== 'string' || !OPERATION_MEMO_TAG_SLUG.test(value)) {
+        throw new Error("Operation memo tag must be a 1–32 character slug without '#'.");
+    }
+    return `#${value}`;
+}
 
 /** Hard cap for a downloaded evidence body (25 MiB), including chunked bodies. */
 export const MAX_DOWNLOAD_BYTES = 25 * 1024 * 1024;
@@ -20,6 +38,8 @@ export interface ClientConfig {
     token?: string;
     cookies?: string[];
     sessionPath?: string;
+    /** Optional caller-owned slug appended to operation memos as a terminal tag. */
+    operationMemoTag?: string;
     logger?: Logger;
 }
 
@@ -110,6 +130,8 @@ export class Client {
     private token: string | null = null;
     private cookies: string[] = [];
     private readonly sessionPath: string | null = null;
+    /** Normalized rendered tag, e.g. `#jarvis`; never derived from tool input. */
+    public readonly operationMemoTag: string | undefined;
     public readonly api: Endpoints;
 
     constructor(config: ClientConfig) {
@@ -123,6 +145,7 @@ export class Client {
         this.token = config.token ?? null;
         this.cookies = config.cookies ?? [];
         this.sessionPath = config.sessionPath ?? null;
+        this.operationMemoTag = normalizeOperationMemoTag(config.operationMemoTag);
 
         this.loadSessionSync();
         this.api = makeEndpoints(this);
@@ -160,6 +183,7 @@ export class Client {
         url: URL,
         options: RequestInit,
         onResponse?: (response: Response) => void,
+        followRedirects = true,
     ): Promise<Response> {
         let currentUrl = url;
         let currentMethod = (options.method ?? 'GET').toUpperCase();
@@ -191,6 +215,7 @@ export class Client {
             onResponse?.(response);
 
             if (![301, 302, 303, 307, 308].includes(response.status)) return response;
+            if (!followRedirects) return response;
             if (redirects >= MAX_TRUSTED_REDIRECTS) {
                 throw new Error("Dougs request failed: too many redirects.");
             }
@@ -282,27 +307,38 @@ export class Client {
         path: string,
         options: RequestInit = {},
         retry = true,
+        followRedirects = true,
+        responseMode: 'json' | 'void' = 'json',
     ): Promise<TRawDTO> {
         const url = this.resolveTrustedUrl(path);
         const headers = this.buildHeaders(options.headers as Record<string, string> | undefined);
-        const response = await this.fetchTrusted(url, { ...options, headers });
+        const response = await this.fetchTrusted(url, { ...options, headers }, undefined, followRedirects);
 
         if (!response.ok) {
             if (response.status === 401 && !url.pathname.includes('/login') && retry) {
                 this.logger.log("Unauthorized access (401). Attempting re-login...");
                 try {
                     await this.login();
-                    return this.request<TRawDTO>(path, options, false);
+                    return this.request<TRawDTO>(path, options, false, followRedirects, responseMode);
                 } catch (loginError) {
                     this.logger.error("Auto-login failed:", loginError);
                 }
             }
             // Never include upstream response bodies in errors: they can contain
             // financial data, cookies, tokens, or provider diagnostics.
-            throw new Error(`Dougs request failed (HTTP ${response.status}).`);
+            throw new RequestError(response.status);
         }
 
-        return response.json() as Promise<TRawDTO>;
+        // A void mutation accepts every successful status, including 200/201
+        // with an empty body, without attempting JSON parsing.
+        if (responseMode === 'void' || response.status === 204 || response.status === 205) {
+            return undefined as TRawDTO;
+        }
+        try {
+            return await response.json() as TRawDTO;
+        } catch {
+            throw new Error("Dougs response did not contain valid JSON.");
+        }
     }
 
     async login(): Promise<void> {
@@ -331,16 +367,63 @@ export class Client {
         return this.request<TRawDTO>(buildUrlWithQuery(path, query), { method: "GET" });
     }
 
-    post<TRawDTO = any>(path: string, body: any): Promise<TRawDTO> {
-        return this.request<TRawDTO>(path, {
-            method: "POST",
-            body: JSON.stringify(body),
-            headers: { "Content-Type": "application/json" },
-        });
+    /**
+     * Every provider mutation is deliberately one-shot: it never follows a
+     * redirect or performs an authentication replay. Once a request may have
+     * left this process, its outcome is treated as unknown on any error.
+     */
+    private async mutationRequest<TRawDTO>(
+        path: string,
+        options: RequestInit,
+        responseMode: 'json' | 'void',
+    ): Promise<TRawDTO> {
+        try {
+            return await this.request<TRawDTO>(path, options, false, false, responseMode);
+        } catch (error) {
+            // A received 4xx is a definite, sanitized provider rejection. Every
+            // other failure can occur after the request left the process, so it
+            // remains unknown. Neither path is safe for automatic replay.
+            if (error instanceof RequestError && error.status >= 400 && error.status < 500) {
+                throw new Error(MUTATION_REJECTED_NO_REPLAY);
+            }
+            throw new Error(MUTATION_OUTCOME_UNKNOWN);
+        }
     }
 
+    private serializeMutationBody(body: unknown): string {
+        try {
+            return JSON.stringify(body);
+        } catch {
+            throw new Error("Invalid mutation request body.");
+        }
+    }
+
+    /** POST once, without redirect following or authentication replay. */
+    post<TRawDTO = any>(path: string, body: unknown): Promise<TRawDTO> {
+        return this.mutationRequest<TRawDTO>(path, {
+            method: "POST",
+            body: this.serializeMutationBody(body),
+            headers: { "Content-Type": "application/json" },
+        }, 'json');
+    }
+
+    /** POST once and accept any successful response without parsing its body. */
+    postVoid(path: string, body: unknown): Promise<void> {
+        return this.mutationRequest<void>(path, {
+            method: "POST",
+            body: this.serializeMutationBody(body),
+            headers: { "Content-Type": "application/json" },
+        }, 'void');
+    }
+
+    /** DELETE once, without redirect following or authentication replay. */
     delete<TRawDTO = any>(path: string): Promise<TRawDTO> {
-        return this.request<TRawDTO>(path, { method: "DELETE" });
+        return this.mutationRequest<TRawDTO>(path, { method: "DELETE" }, 'json');
+    }
+
+    /** DELETE once and accept every successful response without parsing its body. */
+    deleteVoid(path: string): Promise<void> {
+        return this.mutationRequest<void>(path, { method: "DELETE" }, 'void');
     }
 
     /**

@@ -20,6 +20,20 @@ A TypeScript client that provides an easy and clean way to interact with your Do
 npm install dougs-api-client
 ```
 
+## 2.2.0 release notes
+
+- **Narrow live-proven breakdown writes:** `operations_add_breakdown_detail` appends only the UI's zero-residual uncategorized detail; category and amount setters change exactly one existing business line; `operations_set_breakdown_is_investment` changes only the dynamically discovered boolean; and `operations_remove_breakdown_detail` removes one non-counterpart, non-fee business line. No public full-vector replacement, compound reventilation, auto-association, or auto-categorization exists.
+- **One-shot accounting gate:** each line write requires the exact `updatedAt` from its final GET, rejects validated/locked/draft records and ambiguous line scope, sends one POST only, then independently verifies the persisted operation. There is no provider CAS: a residual GET→POST race remains. An unknown or unverifiable post must never be replayed.
+- **Intentional intermediate imbalance:** amount and removal actions require an exact expected resulting total and validity flag. They may leave an operation unbalanced; any repair must be separately authorized in a later call. Existing already-unbalanced records are permitted so that repair is possible.
+- The bounded `operations_get_breakdown_association_candidates` read preflights the scoped operation/line/association/slot and returns the curated `{ descriptor, items, preferredItems }` envelope, omitting provider blobs. Record association assignment remains deliberately unavailable.
+- `operations.createExpenseReport()` remains strict: every initial allocation must be in the contextual create route. This avoids claiming an unproven provider multi-line create capability.
+- Adds curated accounting-category and fixed-asset reads, plus narrowly scoped generic expense, fixed-asset creation, and vendor-invoice attachment actions. Full category catalogues return curated category objects; contextual category routes return validated numeric category IDs.
+- Adds `operations.createExpenseReport()` and the `operations_create_expense_report` MCP action for a personally-paid expense report with 1–20 exact-cent business allocations. The client derives the total and creates exactly one provider-owned partner counterpart; callers cannot provide a total, counterpart, or provider sentinel.
+- `operations.createExpense()` remains the compatible one-line convenience wrapper. Both expense paths preflight the contextual category set and company partner once, POST once, verify the returned creation shape, then independently GET the created ID to verify the complete unordered allocation vector and persisted coherence fields. Missing POST-only coherence keys are tolerated; any explicit incoherence or failed/mismatched reconciliation GET is a static no-retry result.
+- Optional client config `operationMemoTag: "jarvis"` appends a terminal `#jarvis` to operation writes, idempotently. The slug is strictly `[A-Za-z0-9][A-Za-z0-9_-]{0,31}` (without `#`); tagged final memos over the accounting limit fail rather than truncate.
+- Invoice reads expose provider operation suggestions and matched-operation references only as `{ id, date, amount, type, isInbound }`. Operation reads expose source-document vendor-invoice suggestions only as `{ sourceDocumentId, date, amount, type }`. Both omit provider metadata, search indexes, wording, file data, external references, and transaction internals; malformed operation suggestions are omitted without blocking the unrelated operation read.
+- Mutations are deliberately narrow and one-shot: they preflight provider-scoped inputs, never follow redirects or replay authentication, and return a static do-not-retry error when a completed write cannot be verified. For `EXPENSE_REPORT_UNVERIFIED_POST`, reconcile the possible write by tagged memo and a scoped GET; never replay the create.
+
 ## 2.0.1 release notes
 
 **Breaking change:** this unofficial wrapper no longer exports the legacy generated `registry` or `types` catalogs. Use the public `actions` runtime contract instead. The MCP stdio executable (`dougs-mcp-server`) is now bundled with the package.
@@ -57,10 +71,13 @@ The package installs `dougs-mcp-server`. Configure its environment and launch it
   "command": "dougs-mcp-server",
   "env": {
     "DOUGS_EMAIL": "your@email.com",
-    "DOUGS_PASSWORD": "your_password"
+    "DOUGS_PASSWORD": "your_password",
+    "DOUGS_OPERATION_MEMO_TAG": "jarvis"
   }
 }
 ```
+
+`DOUGS_OPERATION_MEMO_TAG` is optional and is never accepted from MCP tool input; it is validated at server startup and applies only operation memo writes.
 
 The public `actions` export is transport-neutral and can be reused by other adapters. HTTP paths and response mapping remain owned by the endpoint implementations.
 

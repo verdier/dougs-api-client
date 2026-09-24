@@ -1,4 +1,5 @@
 import { Client } from '../client';
+import { assertPositiveSafeInteger, isIsoDate } from './validation';
 
 /**
  * Detailed balance pair (single period + previous period).
@@ -229,10 +230,24 @@ function buildYearQuery(q: PerformanceYearQuery): Record<string, unknown> {
     return out;
 }
 
+function assertSupplierChargesQuery(query: SupplierChargesQuery): void {
+    const { startDate, endDate, previousStartDate, previousEndDate } = query;
+    if (!isIsoDate(startDate)
+        || !isIsoDate(endDate)
+        || startDate > endDate
+        || (previousStartDate === undefined) !== (previousEndDate === undefined)
+        || (previousStartDate !== undefined && previousEndDate !== undefined
+            && (!isIsoDate(previousStartDate) || !isIsoDate(previousEndDate)
+                || previousStartDate > previousEndDate))) {
+        throw new Error('Invalid supplier charges date range.');
+    }
+}
+
 export const makePerformanceEndpoint = (
     client: Client,
     { companyId }: PerformanceEndpointParams,
 ): PerformanceEndpoint => {
+    assertPositiveSafeInteger(companyId);
     const base = `/companies/${companyId}`;
 
     return {
@@ -293,6 +308,9 @@ export const makePerformanceEndpoint = (
 
         getAgingBalance: () => client.get(`${base}/invoice-stats/aging-balance`),
 
-        getSuppliersCharges: query => client.get(`${base}/stats/suppliers-charges`, query as unknown as Record<string, unknown>),
+        getSuppliersCharges: query => {
+            assertSupplierChargesQuery(query);
+            return client.get(`${base}/stats/suppliers-charges`, query);
+        },
     };
 };

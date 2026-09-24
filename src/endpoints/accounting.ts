@@ -12,6 +12,7 @@ import {
     mapCompanySummary,
 } from './accounting.map';
 import { Client } from '../client';
+import { assertPositiveSafeInteger } from './validation';
 
 /**
  * Fiscal / accounting year summary.
@@ -288,6 +289,7 @@ export const makeAccountingEndpoint = (
     client: Client,
     { companyId }: AccountingEndpointParams,
 ): AccountingEndpoint => {
+    assertPositiveSafeInteger(companyId);
     const companyPath = `/companies/${companyId}`;
 
     return {

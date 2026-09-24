@@ -163,7 +163,7 @@ describe("authenticated transport boundaries", () => {
         expect(loginRequest.body).toBe(JSON.stringify({ email: "login@example.invalid", password: "login-secret" }));
     });
 
-    test.each([301, 302, 303, 307, 308])("does not follow a foreign %i mutation redirect", async (status) => {
+    test.each([301, 302, 303, 307, 308])("does not follow a foreign %i mutation redirect and never invites a retry", async (status) => {
         fetchMock.mockResolvedValueOnce(new Response(null, {
             status,
             headers: { location: "https://evil.example.invalid/collect" },
@@ -172,12 +172,44 @@ describe("authenticated transport boundaries", () => {
 
         await expect(client.api.operations({ companyId: 42 }).createKilometricIndemnity({
             date: "2025-01-01", distance: 12, memo: "financial payload",
-        })).rejects.toThrow("configured Dougs HTTPS origin");
+        })).rejects.toThrow("MUTATION_OUTCOME_UNKNOWN: The mutation outcome may have succeeded; do not retry.");
         expect(fetchMock).toHaveBeenCalledTimes(1);
         expect(String(fetchMock.mock.calls[0][0])).toBe("https://app.dougs.fr/companies/42/operations");
         const mutationRequest = fetchMock.mock.calls[0][1] as RequestInit;
         expect(mutationRequest).toMatchObject({ method: "POST", redirect: "manual" });
         expect(String(mutationRequest.body)).toContain("financial payload");
+    });
+
+    test.each([400, 401, 409])("classifies a definite mutation HTTP %i rejection without replay", async (status) => {
+        fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ diagnostic: "private" }), { status }));
+        const client = createClient();
+
+        await expect(client.post("/mutations", { synthetic: true }))
+            .rejects.toThrow("MUTATION_REJECTED_NO_REPLAY: Dougs rejected the mutation; do not retry.");
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(String(fetchMock.mock.calls[0][0])).toBe("https://app.dougs.fr/mutations");
+        expect(fetchMock.mock.calls[0][1]).toMatchObject({ method: "POST", redirect: "manual" });
+    });
+
+    test.each([
+        ["server error", () => new Response(null, { status: 500 })],
+        ["transport failure", () => Promise.reject(new Error("network unavailable"))],
+        ["invalid JSON success", () => new Response("not json", { status: 200 })],
+    ])("keeps mutation %s as unknown with one POST", async (_name, response) => {
+        fetchMock.mockImplementationOnce(response as () => Response | Promise<Response>);
+        await expect(createClient().post("/mutations", { synthetic: true }))
+            .rejects.toThrow("MUTATION_OUTCOME_UNKNOWN: The mutation outcome may have succeeded; do not retry.");
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    test("never redirect-replays a DELETE", async () => {
+        fetchMock.mockResolvedValueOnce(new Response(null, { status: 307, headers: { location: "/mutations/redirected" } }));
+        const client = createClient();
+
+        await expect(client.delete("/mutations/1"))
+            .rejects.toThrow("MUTATION_OUTCOME_UNKNOWN: The mutation outcome may have succeeded; do not retry.");
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(fetchMock.mock.calls[0][1]).toMatchObject({ method: "DELETE", redirect: "manual" });
     });
 
     test("bounds authenticated redirect chains", async () => {

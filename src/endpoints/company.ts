@@ -1,5 +1,6 @@
 import { Client } from '../client';
 import { mapCompany, RawCompanyDTO } from './company.map';
+import { assertPositiveSafeInteger } from './validation';
 
 /**
  * Company DTO.
@@ -78,8 +79,14 @@ export interface CompanyEndpoint {
 
 export const makeCompanyEndpoint = (client: Client): CompanyEndpoint => {
     return {
-        getOne: (id: number) => client.get<RawCompanyDTO>(`/companies/${id}`).then(mapCompany),
-        getPartners: (companyId: number) => client.get<PartnerDTO[]>(`/companies/${companyId}/partners`),
+        getOne: (id: number) => {
+            assertPositiveSafeInteger(id);
+            return client.get<RawCompanyDTO>(`/companies/${id}`).then(mapCompany);
+        },
+        getPartners: (companyId: number) => {
+            assertPositiveSafeInteger(companyId);
+            return client.get<PartnerDTO[]>(`/companies/${companyId}/partners`);
+        },
     };
 };
 

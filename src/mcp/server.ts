@@ -6,6 +6,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import dotenv from "dotenv";
 import { actions, Client, type ActionDefinition, type ActionSafety, type DougsEndpoints, type DownloadedFile } from "../index";
+import { noRetryMutationErrors } from "../mutation-errors";
 
 interface PackageMetadata {
     version?: unknown;
@@ -36,8 +37,13 @@ function getErrorMessage(error: unknown): string {
 }
 
 /** MCP clients must not receive arbitrary upstream response/error text. */
-function getSafeToolErrorMessage(): string {
-    return "Request could not be completed. Check the tool input and Dougs session, then retry.";
+function getSafeToolErrorMessage(error: unknown): string {
+    const message = error instanceof Error ? error.message : "";
+    // These are local static strings, not provider diagnostics. Unlike generic
+    // read failures they must preserve the no-retry instruction after a write.
+    return noRetryMutationErrors.has(message)
+        ? message
+        : "Request could not be completed. Check the tool input and Dougs session, then retry.";
 }
 
 const EVIDENCE_MIME_TYPES = new Set([
@@ -113,7 +119,7 @@ export function registerActions(
                     };
                 } catch (error: unknown) {
                     return {
-                        content: [{ type: "text" as const, text: `Error: ${getSafeToolErrorMessage()}` }],
+                        content: [{ type: "text" as const, text: `Error: ${getSafeToolErrorMessage(error)}` }],
                         isError: true,
                     };
                 }
@@ -148,6 +154,7 @@ export async function main(): Promise<void> {
     const client = new Client({
         email: process.env.DOUGS_EMAIL,
         password: process.env.DOUGS_PASSWORD,
+        operationMemoTag: process.env.DOUGS_OPERATION_MEMO_TAG,
         logger: stderrLogger,
     });
     const server = createMcpServer(client.api);

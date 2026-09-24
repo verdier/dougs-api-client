@@ -26,15 +26,10 @@ describe('Dougs API User Integration', () => {
     });
 
     test('should check RawUserDTO structure', async () => {
-        // Make a direct request to see the raw response
         const raw = await client.get<RawUserDTO>('/users/me');
-        console.log('Raw User API Response:', JSON.stringify(raw, null, 2));
-        
+
         expect(raw).toBeDefined();
         expect(raw).toHaveProperty('id');
         expect(raw).toHaveProperty('email');
-        
-        // Log all keys to see what fields are actually returned
-        console.log('Raw User DTO keys:', Object.keys(raw));
     });
 });

@@ -3,6 +3,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { actions, type DougsEndpoints } from "../src";
 import { createMcpServer, getPackageVersion, registerActions, toToolAnnotations } from "../src/mcp/server";
+import { INVESTMENT_UNVERIFIED_POST } from "../src/mutation-errors";
 
 const EXPECTED_ACTIONS = [
     "accounting_get_fiscal_years",
@@ -11,6 +12,7 @@ const EXPECTED_ACTIONS = [
     "accounting_get_treasury_accounts",
     "accounting_get_company_summary",
     "cars_get_all",
+    "categories_get_all",
     "companies_get_one",
     "companies_get_partners",
     "invoices_list_sales",
@@ -18,11 +20,25 @@ const EXPECTED_ACTIONS = [
     "invoices_list_purchases",
     "invoices_get_purchase",
     "invoices_download_purchase_evidence",
+    "investments_get_all",
+    "investments_get_active_categories",
+    "investments_get_one",
+    "investments_get_status",
+    "investments_create",
     "operations_get_all",
     "operations_get_one",
+    "operations_add_breakdown_detail",
+    "operations_set_breakdown_category",
+    "operations_set_breakdown_amount",
+    "operations_set_breakdown_is_investment",
+    "operations_remove_breakdown_detail",
+    "operations_get_available_categories",
+    "operations_get_breakdown_association_candidates",
     "operations_download_source_document_attachment",
     "operations_delete",
     "operations_create_kilometric_indemnity",
+    "operations_create_expense",
+    "operations_create_expense_report",
     "performance_list_series",
     "performance_get_serie_values",
     "performance_get_chiffre_daffaires",
@@ -47,6 +63,7 @@ const EXPECTED_ACTIONS = [
     "prestations_list",
     "prestations_get_document_download_path",
     "users_get_me",
+    "vendor_invoices_attach_operation",
 ] as const;
 
 function mockApi(overrides: Partial<DougsEndpoints> = {}): DougsEndpoints {
@@ -61,7 +78,8 @@ async function connectMcp(server: McpServer): Promise<McpClient> {
 }
 
 describe("declarative action contract", () => {
-    test("keeps the exact canonical set of 42 stable action names", () => {
+    test("keeps the exact canonical set of 58 stable action names", () => {
+        expect(Object.keys(actions)).toHaveLength(58);
         expect(Object.keys(actions)).toEqual(EXPECTED_ACTIONS);
         expect(Object.values(actions).map(action => action.name)).toEqual(EXPECTED_ACTIONS);
     });
@@ -79,6 +97,22 @@ describe("declarative action contract", () => {
             readOnly: false, destructive: true, idempotent: true, openWorld: true,
         });
         expect(actions.operations_create_kilometric_indemnity.safety).toEqual({
+            readOnly: false, destructive: false, idempotent: false, openWorld: true,
+        });
+        expect(actions.operations_create_expense.safety).toEqual({
+            readOnly: false, destructive: false, idempotent: false, openWorld: true,
+        });
+        for (const action of [
+            actions.operations_set_breakdown_category,
+            actions.operations_set_breakdown_amount,
+            actions.operations_set_breakdown_is_investment,
+        ]) {
+            expect(toToolAnnotations(action.safety).destructiveHint).toBe(true);
+        }
+        expect(actions.investments_create.safety).toEqual({
+            readOnly: false, destructive: false, idempotent: false, openWorld: true,
+        });
+        expect(actions.vendor_invoices_attach_operation.safety).toEqual({
             readOnly: false, destructive: false, idempotent: false, openWorld: true,
         });
         expect(actions.invoices_download_purchase_evidence.safety).toEqual({
@@ -191,6 +225,18 @@ describe("MCP adapter", () => {
         });
         await expect(handler({})).resolves.toEqual({
             content: [{ type: "text", text: "Error: Request could not be completed. Check the tool input and Dougs session, then retry." }],
+            isError: true,
+        });
+    });
+
+    test("preserves a local static no-retry mutation error instead of recommending retry", async () => {
+        const getMe = jest.fn().mockRejectedValue(new Error(INVESTMENT_UNVERIFIED_POST));
+        const server = new McpServer({ name: "test", version: "1.0.0" });
+        registerActions(server, mockApi({ users: { getMe } }));
+        const handler = (server as any)._registeredTools.users_get_me.handler;
+
+        await expect(handler({})).resolves.toEqual({
+            content: [{ type: "text", text: `Error: ${INVESTMENT_UNVERIFIED_POST}` }],
             isError: true,
         });
     });

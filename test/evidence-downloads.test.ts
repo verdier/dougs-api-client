@@ -1,6 +1,7 @@
 import { Client, MAX_DOWNLOAD_BYTES } from "../src";
 
 const BASE_URL = "https://app.dougs.fr";
+const INVOICE_ID = "00000000-0000-4000-8000-000000000001";
 
 function createClient(): Client {
     return new Client({
@@ -27,7 +28,7 @@ describe("evidence downloads", () => {
     test("downloads purchase evidence from the invoice metadata filePath", async () => {
         fetchMock
             .mockResolvedValueOnce(new Response(JSON.stringify({
-                id: "invoice-uuid",
+                id: INVOICE_ID,
                 filePath: "/files/evidence/download",
             }), { status: 200 }))
             .mockResolvedValueOnce(new Response("invoice evidence", {
@@ -39,24 +40,24 @@ describe("evidence downloads", () => {
             }));
 
         const download = await createClient().api.invoices({ companyId: 42 })
-            .downloadPurchaseEvidence("invoice-uuid");
+            .downloadPurchaseEvidence(INVOICE_ID);
 
         expect(download).toMatchObject({ contentType: "application/pdf", filename: "invoice.pdf" });
         expect(download.buffer.toString()).toBe("invoice evidence");
         expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
-            "https://app.dougs.fr/companies/42/vendor-invoices/invoice-uuid",
+            `https://app.dougs.fr/companies/42/vendor-invoices/${INVOICE_ID}`,
             "https://app.dougs.fr/files/evidence/download",
         ]);
     });
 
     test.each([null, "   "])("rejects a purchase invoice with an unusable path without downloading", async (filePath) => {
         fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
-            id: "invoice-uuid",
+            id: INVOICE_ID,
             filePath,
         }), { status: 200 }));
 
         await expect(createClient().api.invoices({ companyId: 42 })
-            .downloadPurchaseEvidence("invoice-uuid"))
+            .downloadPurchaseEvidence(INVOICE_ID))
             .rejects.toThrow("no downloadable evidence");
         expect(fetchMock).toHaveBeenCalledTimes(1);
     });
@@ -137,19 +138,12 @@ describe("evidence downloads", () => {
         expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
-    test("encodes direct invoice endpoint IDs so they cannot traverse paths", async () => {
-        fetchMock
-            .mockResolvedValueOnce(new Response(JSON.stringify({ id: "synthetic" }), { status: 200 }))
-            .mockResolvedValueOnce(new Response(JSON.stringify({ id: "synthetic" }), { status: 200 }));
+    test("rejects unsafe direct invoice endpoint IDs before a path is built", async () => {
         const invoices = createClient().api.invoices({ companyId: 42 });
 
-        await invoices.getPurchase("../other-resource");
-        await invoices.getSale("../other-resource");
-
-        expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
-            "https://app.dougs.fr/companies/42/vendor-invoices/..%2Fother-resource",
-            "https://app.dougs.fr/companies/42/sales-invoices/..%2Fother-resource",
-        ]);
+        expect(() => invoices.getPurchase("../other-resource")).toThrow("Invalid invoice identifier");
+        expect(() => invoices.getSale("../other-resource")).toThrow("Invalid invoice identifier");
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 
     test("rejects declared oversized downloads before consuming their body", async () => {

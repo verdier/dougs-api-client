@@ -1,5 +1,6 @@
 import { Client } from '../client';
 import { mapCars, RawCarDTO } from './car.map';
+import { assertPositiveSafeInteger } from './validation';
 
 /**
  * Car DTO.
@@ -51,6 +52,7 @@ export interface CarEndpoint {
 }
 
 export const makeCarEndpoint = (client: Client, { companyId }: CarEndpointParams): CarEndpoint => {
+    assertPositiveSafeInteger(companyId);
     return {
         getAll: () => client.get<RawCarDTO[]>(`/companies/${companyId}/cars`).then(mapCars)
     };

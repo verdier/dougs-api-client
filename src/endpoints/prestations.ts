@@ -1,4 +1,5 @@
 import { Client } from '../client';
+import { assertPositiveSafeInteger, assertUuid } from './validation';
 
 /**
  * Prestation category as returned by Dougs.
@@ -256,12 +257,16 @@ export const makePrestationsEndpoint = (
     client: Client,
     { companyId }: PrestationsEndpointParams,
 ): PrestationsEndpoint => {
+    assertPositiveSafeInteger(companyId);
     return {
         list: () =>
             client
                 .get<RawPrestation[]>(`/companies/${companyId}/customer-deliveries`)
                 .then(list => list.map(mapPrestation)),
 
-        getDocumentDownloadPath: (fileUuid: string) => `/files/${fileUuid}/actions/download`,
+        getDocumentDownloadPath: (fileUuid: string) => {
+            assertUuid(fileUuid);
+            return `/files/${encodeURIComponent(fileUuid)}/actions/download`;
+        },
     };
 };

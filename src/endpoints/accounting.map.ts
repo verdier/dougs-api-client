@@ -203,10 +203,6 @@ function mapDocuments(raw: RawDocumentHolder[] | null | undefined): AccountingYe
 
 export function mapAccountingYear(raw: RawAccountingYearDTO): AccountingYearDetailDTO {
     const base = mapAccountingYearBase(raw);
-    const journalDoc = mapDocument(raw.journal);
-    const extraDocs = [...(raw.documents ?? [])];
-    if (journalDoc) extraDocs.push(raw.journal as RawDocumentHolder);
-
     return {
         ...base,
         effectiveClosingDate: raw.effectiveClosingDate,

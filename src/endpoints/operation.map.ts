@@ -1,4 +1,19 @@
-import { OperationDTO, OperationType, BreakdownDTO, SourceDocumentAttachmentDTO } from './operation';
+import {
+    OperationDTO,
+    OperationType,
+    BreakdownDTO,
+    BreakdownAssociationDataDTO,
+    BreakdownAssociationDTO,
+    SourceDocumentAttachmentDTO,
+    VendorInvoiceMatchCandidateDTO,
+} from './operation';
+import {
+    isIsoDate,
+    isMoneyAmount,
+    isPositiveSafeInteger,
+    isRecord,
+    isTrimmedNonBlankText,
+} from './validation';
 
 /**
  * Raw Operation DTO as returned by the Dougs API.
@@ -75,7 +90,8 @@ export interface RawOperationDTO {
     allowUnbalanced?: boolean;
     isTotalAmountValid?: boolean;
     sourceDocumentAttachments?: RawSourceDocumentAttachmentDTO[];
-    sourceDocumentCandidate?: any | null;
+    /** Untrusted provider suggestion; only a curated projection may be exposed. */
+    sourceDocumentCandidate?: unknown | null;
 }
 
 /**
@@ -95,17 +111,24 @@ export interface RawSourceDocumentAttachmentDTO {
  * Raw Breakdown Association Data DTO as returned by the Dougs API.
  */
 export interface RawBreakdownAssociationDataDTO {
+    partnerId?: number;
     kilometers?: number;
     carId?: number;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
-/**
- * Raw Breakdown Association DTO as returned by the Dougs API.
- */
+/** Raw association-slot metadata required for candidate-route preflight. */
+export interface RawBreakdownAssociationSlotDTO {
+    type?: string;
+    isAssignable?: boolean;
+    [key: string]: unknown;
+}
+
 export interface RawBreakdownAssociationDTO {
     id?: number;
+    name?: string;
     type?: string;
+    slots?: Record<string, RawBreakdownAssociationSlotDTO>;
     [key: string]: any;
 }
 
@@ -115,7 +138,7 @@ export interface RawBreakdownAssociationDTO {
 export interface RawBreakdownDTO {
     unitAmount?: number;
     uuid?: string;
-    associationData?: RawBreakdownAssociationDataDTO;
+    associationData?: RawBreakdownAssociationDataDTO | null;
     date?: string;
     id: number;
     companyId?: number;
@@ -200,6 +223,11 @@ function extractTypes(raw: RawOperationDTO): OperationType[] {
 /**
  * Maps raw source document attachment to SourceDocumentAttachmentDTO.
  */
+function mapErrors(raw: unknown[] | undefined): string[] | undefined {
+    const errors = raw?.filter((error): error is string => typeof error === 'string');
+    return errors && errors.length > 0 ? errors : undefined;
+}
+
 function mapSourceDocumentAttachment(raw: RawSourceDocumentAttachmentDTO): SourceDocumentAttachmentDTO {
     return {
         id: raw.id,
@@ -211,15 +239,73 @@ function mapSourceDocumentAttachment(raw: RawSourceDocumentAttachmentDTO): Sourc
     };
 }
 
+const MAX_VENDOR_INVOICE_MATCH_TYPE_LENGTH = 100;
+
+/**
+ * A source-document candidate is optional decoration on an otherwise useful
+ * operation read. Invalid provider data is therefore omitted rather than
+ * making unrelated operation reads unavailable; it is never partially exposed.
+ */
+function mapVendorInvoiceMatchCandidate(
+    raw: unknown | null | undefined,
+    companyId: number,
+): VendorInvoiceMatchCandidateDTO | null | undefined {
+    if (raw === undefined || raw === null) return raw;
+    if (!isRecord(raw) || !isPositiveSafeInteger(raw.id) || !isRecord(raw.sourceDocument)) {
+        return undefined;
+    }
+    const sourceDocument = raw.sourceDocument;
+    if (!isPositiveSafeInteger(sourceDocument.id)
+        || sourceDocument.companyId !== companyId
+        || !isIsoDate(sourceDocument.date)
+        || !isMoneyAmount(sourceDocument.amount, true)
+        || !isTrimmedNonBlankText(sourceDocument.type, MAX_VENDOR_INVOICE_MATCH_TYPE_LENGTH)) {
+        return undefined;
+    }
+    return {
+        sourceDocumentId: sourceDocument.id,
+        date: sourceDocument.date,
+        amount: sourceDocument.amount,
+        type: sourceDocument.type,
+    };
+}
+
 /**
  * Maps raw breakdown to simplified BreakdownDTO.
  */
+function mapAssociationData(raw: RawBreakdownAssociationDataDTO | null | undefined): BreakdownAssociationDataDTO | undefined {
+    if (!raw) return undefined;
+    const partnerId = typeof raw.partnerId === 'number' ? raw.partnerId : undefined;
+    const carId = typeof raw.carId === 'number' ? raw.carId : undefined;
+    const kilometers = typeof raw.kilometers === 'number' ? raw.kilometers : undefined;
+    const isInvestment = typeof raw.isInvestment === 'boolean' ? raw.isInvestment : undefined;
+    if (partnerId === undefined && carId === undefined && kilometers === undefined && isInvestment === undefined) return undefined;
+    return { partnerId, carId, kilometers, isInvestment };
+}
+
+function mapAssociations(raw: RawBreakdownAssociationDTO[] | undefined): BreakdownAssociationDTO[] | undefined {
+    const associations = raw?.flatMap(association => {
+        if (!isTrimmedNonBlankText(association.name, 100) || !association.slots || !isRecord(association.slots)) return [];
+        const slots = Object.entries(association.slots).flatMap(([name, slot]) => {
+            if (!isTrimmedNonBlankText(name, 100)
+                || !['boolean', 'record', 'enum', 'integer'].includes(slot.type ?? '')
+                || typeof slot.isAssignable !== 'boolean') return [];
+            return [{ name, type: slot.type as 'boolean' | 'record' | 'enum' | 'integer', isAssignable: slot.isAssignable }];
+        });
+        return [{ name: association.name, slots }];
+    });
+    return associations && associations.length > 0 ? associations : undefined;
+}
+
 function mapBreakdown(raw: RawBreakdownDTO): BreakdownDTO {
     return {
         id: raw.id,
         amount: raw.amount,
         wording: raw.wording ?? undefined,
         isInbound: raw.isInbound,
+        isCounterpart: raw.isCounterpart,
+        associationData: mapAssociationData(raw.associationData),
+        associations: mapAssociations(raw.associations),
 
         hasVat: raw.hasVat,
         vatAmount: raw.vatAmount,
@@ -240,6 +326,7 @@ function mapBreakdown(raw: RawBreakdownDTO): BreakdownDTO {
  * Maps raw API response to filtered OperationDTO.
  */
 export function mapOperation(raw: RawOperationDTO): OperationDTO {
+    const sourceDocumentCandidate = mapVendorInvoiceMatchCandidate(raw.sourceDocumentCandidate, raw.companyId);
     return {
         id: raw.id,
         date: raw.date,
@@ -252,7 +339,7 @@ export function mapOperation(raw: RawOperationDTO): OperationDTO {
 
         validatedAt: raw.validatedAt,
         message: raw.message,
-        errors: raw.errors,
+        errors: mapErrors(raw.errors),
 
         type: raw.type,
         types: extractTypes(raw),
@@ -269,7 +356,7 @@ export function mapOperation(raw: RawOperationDTO): OperationDTO {
         breakdowns: raw.breakdowns?.map(mapBreakdown),
 
         sourceDocumentAttachments: raw.sourceDocumentAttachments?.map(mapSourceDocumentAttachment),
-        sourceDocumentCandidate: raw.sourceDocumentCandidate,
+        ...(sourceDocumentCandidate === undefined ? {} : { sourceDocumentCandidate }),
     };
 }
 
