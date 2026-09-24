@@ -20,6 +20,11 @@ A TypeScript client that provides an easy and clean way to interact with your Do
 npm install dougs-api-client
 ```
 
+## 2.2.1 release notes
+
+- `login()` now rejects a login Dougs holds for a second factor (`status: "mfaRequired"`) with `Dougs login requires MFA`, and any other non-`authenticated` status. Its pre-MFA token used to be kept and every call then failed with a bare 401.
+- A read whose automatic re-login fails now throws the login error instead of `Dougs request failed (HTTP 401)`.
+
 ## 2.2.0 release notes
 
 - **Narrow live-proven breakdown writes:** `operations_add_breakdown_detail` appends only the UI's zero-residual uncategorized detail; category and amount setters change exactly one existing business line; `operations_set_breakdown_is_investment` changes only the dynamically discovered boolean; and `operations_remove_breakdown_detail` removes one non-counterpart, non-fee business line. No public full-vector replacement, compound reventilation, auto-association, or auto-categorization exists.

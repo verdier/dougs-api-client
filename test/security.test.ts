@@ -146,6 +146,29 @@ describe("authenticated transport boundaries", () => {
         expect(authRedirectHeaders.get("cookie")).toContain("authenticated=redirect-cookie");
     });
 
+    test("refuses a login that Dougs holds for MFA and surfaces it instead of a 401", async () => {
+        fetchMock
+            .mockResolvedValueOnce(new Response(null, { status: 401 }))
+            .mockResolvedValueOnce(new Response(null, { status: 404 }))
+            .mockResolvedValueOnce(new Response(JSON.stringify({
+                status: "mfaRequired",
+                enabledAuthFactors: [{ type: "email" }],
+                accessToken: "pre-mfa-token",
+            }), { status: 200 }));
+        const client = createClient();
+
+        await expect(client.get("/users/me")).rejects.toThrow("Dougs login requires MFA");
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+
+    test("accepts an authenticated login status", async () => {
+        fetchMock
+            .mockResolvedValueOnce(new Response(null, { status: 404 }))
+            .mockResolvedValueOnce(new Response(JSON.stringify({ status: "authenticated", accessToken: "t" }), { status: 200 }));
+
+        await expect(createClient().login()).resolves.toBeUndefined();
+    });
+
     test.each([307, 308])("does not follow a foreign %i login redirect", async (status) => {
         fetchMock
             .mockResolvedValueOnce(new Response(null, { status: 200 }))

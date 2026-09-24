@@ -321,7 +321,9 @@ export class Client {
                     await this.login();
                     return this.request<TRawDTO>(path, options, false, followRedirects, responseMode);
                 } catch (loginError) {
+                    // The login failure says why access is denied (e.g. MFA); a bare 401 would hide it.
                     this.logger.error("Auto-login failed:", loginError);
+                    throw loginError;
                 }
             }
             // Never include upstream response bodies in errors: they can contain
@@ -358,7 +360,15 @@ export class Client {
 
         if (!response.ok) throw new Error(`Dougs login failed (HTTP ${response.status}).`);
 
-        const data = await response.json() as { accessToken?: string };
+        // Dougs answers 200 with `status: "mfaRequired"` when a second factor is enabled:
+        // the token it returns is pre-MFA and every API call with it is a 401.
+        const data = await response.json() as { status?: string; accessToken?: string };
+        if (data.status === 'mfaRequired') {
+            throw new Error("Dougs login requires MFA: disable the second factor on this Dougs account.");
+        }
+        if (data.status !== undefined && data.status !== 'authenticated') {
+            throw new Error(`Dougs login did not complete (status: ${data.status}).`);
+        }
         if (data.accessToken) this.token = data.accessToken;
         await this.saveSession();
     }
