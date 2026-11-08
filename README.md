@@ -20,6 +20,12 @@ A TypeScript client that provides an easy and clean way to interact with your Do
 npm install dougs-api-client
 ```
 
+## 2.2.2 release notes (local, unpublished)
+
+- Adds `operations.setMemo(operationId, memo, { expectedUpdatedAt })` and shared MCP action `operations_set_memo` (`companyId`, `operationId`, `memo`, `expectedUpdatedAt`). Replaces only the memo on a scoped, explicitly editable operation, POSTs exactly once, then independently GETs and verifies memo plus all unrelated raw semantics, including totals, breakdowns and attachments. Empty text clears the memo; with `operationMemoTag` configured it leaves only that tag. No per-call tag override. Plain text only (no HTML, NUL or surrounding whitespace), maximum 2,000 characters after tagging; no truncation.
+- Rejects stale tokens, validated/locked/draft/deleted/excluded operations, missing editability flags, ambiguous breakdown scope and miscellaneous operations conservatively. Exact `updatedAt` is a preflight guard, **not atomic provider CAS**: a residual GET→POST race remains because the evidenced UI update resends the operation snapshot. Never retry an unknown POST or `OPERATION_MEMO_UNVERIFIED_POST`; reconcile through a scoped GET instead.
+- Route/payload evidence is local legacy provider source, not a live mutation probe: `config/routes.js:675` maps operation POST to `OperationController.update`; `operation.pug:100–109` saves on memo blur; `Resource.ts:121–141` POSTs full `toJSON`; `OperationController.ts:386–427` assigns the request body; `Operation.ts:415–428` defines memo assignment and HTML-to-text normalization. No live write validation was performed; current provider drift may cause a safe rejection or unverifiable write. No separate memo route is invented.
+
 ## 2.2.1 release notes
 
 - `login()` now rejects a login Dougs holds for a second factor (`status: "mfaRequired"`) with `Dougs login requires MFA`, and any other non-`authenticated` status. Its pre-MFA token used to be kept and every call then failed with a bare 401.

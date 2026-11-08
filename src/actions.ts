@@ -146,6 +146,13 @@ const breakdownAssociationCandidatesInput = strictObject({
     limit: z.number().int().min(1).max(100).optional(),
 });
 const expectedUpdatedAt = z.string().trim().min(1).max(100).describe("Exact updatedAt token from the final operations_get_one read.");
+const operationMemoInput = strictObject({
+    companyId, operationId: accountingId, expectedUpdatedAt,
+    memo: z.string().max(MAX_ACCOUNTING_MEMO_LENGTH)
+        .refine(value => value === '' || (value === value.trim() && value.length > 0), "Use trimmed plain text or an empty string.")
+        .refine(value => !/[<>\u0000]/.test(value), "HTML and NUL are unsupported.")
+        .describe("Replacement plain-text memo. Empty clears it; a configured client tag remains appended."),
+});
 const breakdownAddDetailInput = strictObject({ companyId, operationId: accountingId, expectedUpdatedAt });
 const breakdownCategoryInput = strictObject({ companyId, operationId: accountingId, breakdownId: accountingId, categoryId: accountingId, expectedUpdatedAt });
 const breakdownAmountInput = strictObject({
@@ -336,6 +343,11 @@ export const actions = {
     operations_get_one: defineAction({
         name: "operations_get_one", description: "Retrieve a single operation by ID.", inputSchema: operationIdInput, safety: READ,
         execute: (api, { companyId, id }) => api.operations({ companyId }).getOne(id),
+    }),
+    operations_set_memo: defineAction({
+        name: "operations_set_memo", description: "Replace only an editable operation memo, applying the configured audit tag. Requires a fresh updatedAt; one-shot, never retry an unknown outcome. Empty text clears the memo except any configured tag.",
+        inputSchema: operationMemoInput, safety: DESTRUCTIVE_WRITE,
+        execute: (api, { companyId, operationId, memo, expectedUpdatedAt }) => api.operations({ companyId }).setMemo(operationId, memo, { expectedUpdatedAt }),
     }),
     operations_add_breakdown_detail: defineAction({
         name: "operations_add_breakdown_detail", description: "Append only the provider UI's live-proven uncategorized zero-residual detail to an editable operation.", inputSchema: breakdownAddDetailInput, safety: CREATE,

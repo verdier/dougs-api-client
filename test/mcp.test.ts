@@ -27,6 +27,7 @@ const EXPECTED_ACTIONS = [
     "investments_create",
     "operations_get_all",
     "operations_get_one",
+    "operations_set_memo",
     "operations_add_breakdown_detail",
     "operations_set_breakdown_category",
     "operations_set_breakdown_amount",
@@ -78,8 +79,8 @@ async function connectMcp(server: McpServer): Promise<McpClient> {
 }
 
 describe("declarative action contract", () => {
-    test("keeps the exact canonical set of 58 stable action names", () => {
-        expect(Object.keys(actions)).toHaveLength(58);
+    test("keeps the exact canonical set of 59 stable action names", () => {
+        expect(Object.keys(actions)).toHaveLength(59);
         expect(Object.keys(actions)).toEqual(EXPECTED_ACTIONS);
         expect(Object.values(actions).map(action => action.name)).toEqual(EXPECTED_ACTIONS);
     });
@@ -103,6 +104,7 @@ describe("declarative action contract", () => {
             readOnly: false, destructive: false, idempotent: false, openWorld: true,
         });
         for (const action of [
+            actions.operations_set_memo,
             actions.operations_set_breakdown_category,
             actions.operations_set_breakdown_amount,
             actions.operations_set_breakdown_is_investment,

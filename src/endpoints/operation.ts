@@ -3,6 +3,7 @@ import {
     BREAKDOWN_MUTATION_UNVERIFIED_POST,
     EXPENSE_REPORT_UNVERIFIED_POST,
     KILOMETRIC_UNVERIFIED_POST,
+    OPERATION_MEMO_UNVERIFIED_POST,
 } from '../mutation-errors';
 import { mapOperation, mapOperations, type RawOperationDTO } from './operation.map';
 import {
@@ -238,6 +239,8 @@ export interface OperationEndpoint {
     getAll(query?: OperationQuery): Promise<OperationDTO[]>;
     /** Retrieve a provider detail record by ID without list-state filtering. */
     getOne(id: number): Promise<OperationDTO>;
+    /** Replace only the memo, applying the configured tag; empty text explicitly clears it (or leaves only the tag). */
+    setMemo(operationId: number, memo: string, expectation: BreakdownMutationExpectation): Promise<OperationDTO>;
     getAvailableCategories(
         operationId: number,
         breakdownId: number,
@@ -770,6 +773,25 @@ function operationSemantics(raw: RawOperationDTO): Record<string, unknown> {
     return stable;
 }
 
+/** Memo edits permit no accounting/display normalization except operation and line timestamps. */
+function memoOperationSemantics(raw: RawOperationDTO): unknown {
+    const stable = { ...raw } as Record<string, unknown>;
+    for (const field of ['memo', 'createdAt', 'updatedAt']) delete stable[field];
+    stable.breakdowns = raw.breakdowns!.map(line => {
+        const copy = { ...line } as Record<string, unknown>;
+        delete copy.createdAt;
+        delete copy.updatedAt;
+        return copy;
+    }).sort((a, b) => (a.id as number) - (b.id as number));
+    // JSON object key order is not semantic; array order (except line IDs) is.
+    const canonical = (value: unknown): unknown => Array.isArray(value)
+        ? value.map(canonical)
+        : isRecord(value)
+            ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]))
+            : value;
+    return canonical(stable);
+}
+
 function assertTopLevelPreserved(before: RawOperationDTO, after: RawOperationDTO): void {
     if (!equalJson(operationSemantics(before), operationSemantics(after))) mutationFailure();
 }
@@ -983,6 +1005,41 @@ export const makeOperationEndpoint = (client: Client, { companyId }: OperationEn
         getAll: (query?: OperationQuery) =>
             client.get<RawOperationDTO[]>(baseUrl, normalizeOperationQuery(query)).then(mapOperations),
         getOne,
+        setMemo: async (operationId, memo, expectation) => {
+            assertPositiveSafeInteger(operationId);
+            assertExpectation(expectation);
+            if (typeof memo !== 'string' || memo.length > MAX_ACCOUNTING_MEMO_LENGTH
+                || (memo !== '' && (!isTrimmedNonBlankText(memo, MAX_ACCOUNTING_MEMO_LENGTH) || memo !== trimText(memo)))
+                || /[<>\u0000]/.test(memo)) {
+                // The provider converts HTML to text. Reject markup rather than
+                // claiming an exact replacement we cannot verify as requested.
+                throw new Error("Invalid operation memo: use plain text, or an empty string to clear.");
+            }
+            const finalMemo = appendOperationMemoTag(memo, client.operationMemoTag)!;
+            const before = await getRawOne(operationId);
+            assertMutationOperation(before, companyId, operationId, expectation);
+            if (before.validated !== false || before.validatedAt !== null
+                || before.manuallyLocked !== false || before.lockedByDate !== false || before.isDraft !== false
+                || before.deleted !== false || before.excluded !== false
+                || typeof before.type !== 'string' || /miscellaneous/i.test(before.type)) {
+                throw new Error("Operation memo editability is unavailable or unsupported.");
+            }
+            if (before.memo === finalMemo) throw new Error("Operation memo is unchanged.");
+            // The evidenced UI saves its full operation. Reuse that provider
+            // update route and raw snapshot, changing no field except memo.
+            await client.postVoid(`${baseUrl}/${operationId}`, { ...before, memo: finalMemo });
+            try {
+                const persisted = await getRawOne(operationId);
+                assertMutationOperation(persisted, companyId, operationId, { expectedUpdatedAt: persisted.updatedAt! });
+                if (persisted.memo !== finalMemo
+                    || !equalJson(memoOperationSemantics(before), memoOperationSemantics(persisted))) {
+                    throw new Error(OPERATION_MEMO_UNVERIFIED_POST);
+                }
+                return mapOperation(persisted);
+            } catch {
+                throw new Error(OPERATION_MEMO_UNVERIFIED_POST);
+            }
+        },
         addBreakdownDetail: async (operationId, expectation) => {
             assertPositiveSafeInteger(operationId);
             assertExpectation(expectation);

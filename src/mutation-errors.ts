@@ -24,6 +24,9 @@ export const INVESTMENT_UNVERIFIED_POST =
 export const BREAKDOWN_MUTATION_UNVERIFIED_POST =
     "BREAKDOWN_MUTATION_UNVERIFIED_POST: The breakdown mutation may have succeeded but could not be verified; do not retry.";
 
+export const OPERATION_MEMO_UNVERIFIED_POST =
+    "OPERATION_MEMO_UNVERIFIED_POST: The memo mutation may have succeeded but could not be verified; do not retry.";
+
 export const VENDOR_INVOICE_ATTACH_UNVERIFIED_POST =
     "VENDOR_INVOICE_ATTACH_UNVERIFIED_POST: The attachment may have succeeded but its linkage could not be verified; do not retry.";
 
@@ -34,5 +37,6 @@ export const noRetryMutationErrors = new Set<string>([
     KILOMETRIC_UNVERIFIED_POST,
     INVESTMENT_UNVERIFIED_POST,
     BREAKDOWN_MUTATION_UNVERIFIED_POST,
+    OPERATION_MEMO_UNVERIFIED_POST,
     VENDOR_INVOICE_ATTACH_UNVERIFIED_POST,
 ]);
