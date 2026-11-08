@@ -99,7 +99,8 @@ export interface RawOperationDTO {
  */
 export interface RawSourceDocumentAttachmentDTO {
     id: number;
-    url: string;
+    url?: string;
+    sourceDocument?: unknown;
     filename?: string;
     mimeType?: string;
     size?: number;
@@ -229,13 +230,16 @@ function mapErrors(raw: unknown[] | undefined): string[] | undefined {
 }
 
 function mapSourceDocumentAttachment(raw: RawSourceDocumentAttachmentDTO): SourceDocumentAttachmentDTO {
+    // Current Dougs responses nest file metadata under the attached source document.
+    const file = isRecord(raw.sourceDocument) && isRecord(raw.sourceDocument.file)
+        ? raw.sourceDocument.file : undefined;
     return {
         id: raw.id,
-        url: raw.url,
-        filename: raw.filename,
-        mimeType: raw.mimeType,
+        url: raw.url ?? (typeof file?.url === 'string' ? file.url : undefined),
+        filename: raw.filename ?? (typeof file?.name === 'string' ? file.name : undefined),
+        mimeType: raw.mimeType ?? (typeof file?.mimeType === 'string' ? file.mimeType : undefined),
         size: raw.size,
-        createdAt: raw.createdAt,
+        createdAt: raw.createdAt ?? (typeof file?.createdAt === 'string' ? file.createdAt : undefined),
     };
 }
 

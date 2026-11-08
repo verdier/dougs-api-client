@@ -56,7 +56,7 @@ export type OperationType =
 /** Source document attachment DTO. */
 export interface SourceDocumentAttachmentDTO {
     id: number;
-    url: string;
+    url?: string;
     filename?: string;
     mimeType?: string;
     size?: number;
