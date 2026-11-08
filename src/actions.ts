@@ -153,6 +153,7 @@ const operationMemoInput = strictObject({
         .refine(value => !/[<>\u0000]/.test(value), "HTML and NUL are unsupported.")
         .describe("Replacement plain-text memo. Empty clears it; a configured client tag remains appended."),
 });
+const operationUnvalidateInput = strictObject({ companyId, operationId: accountingId, expectedUpdatedAt });
 const breakdownAddDetailInput = strictObject({ companyId, operationId: accountingId, expectedUpdatedAt });
 const breakdownCategoryInput = strictObject({ companyId, operationId: accountingId, breakdownId: accountingId, categoryId: accountingId, expectedUpdatedAt });
 const breakdownAmountInput = strictObject({
@@ -348,6 +349,11 @@ export const actions = {
         name: "operations_set_memo", description: "Replace only an editable operation memo, applying the configured audit tag. Requires a fresh updatedAt; one-shot, never retry an unknown outcome. Empty text clears the memo except any configured tag.",
         inputSchema: operationMemoInput, safety: DESTRUCTIVE_WRITE,
         execute: (api, { companyId, operationId, memo, expectedUpdatedAt }) => api.operations({ companyId }).setMemo(operationId, memo, { expectedUpdatedAt }),
+    }),
+    operations_unvalidate: defineAction({
+        name: "operations_unvalidate", description: "Unvalidate one explicitly validated, unlocked supported operation only after explicit user authorization; invoice:* and miscellaneous types are excluded. Requires a fresh updatedAt; preserves memo and accounting fields, POSTs once and independently verifies. Never retry an unknown outcome or combine with another edit.",
+        inputSchema: operationUnvalidateInput, safety: DESTRUCTIVE_WRITE,
+        execute: (api, { companyId, operationId, expectedUpdatedAt }) => api.operations({ companyId }).unvalidate(operationId, { expectedUpdatedAt }),
     }),
     operations_add_breakdown_detail: defineAction({
         name: "operations_add_breakdown_detail", description: "Append only the provider UI's live-proven uncategorized zero-residual detail to an editable operation.", inputSchema: breakdownAddDetailInput, safety: CREATE,

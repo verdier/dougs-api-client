@@ -4,6 +4,7 @@ import {
     EXPENSE_REPORT_UNVERIFIED_POST,
     KILOMETRIC_UNVERIFIED_POST,
     OPERATION_MEMO_UNVERIFIED_POST,
+    OPERATION_UNVALIDATE_UNVERIFIED_POST,
 } from '../mutation-errors';
 import { mapOperation, mapOperations, type RawOperationDTO } from './operation.map';
 import {
@@ -241,6 +242,8 @@ export interface OperationEndpoint {
     getOne(id: number): Promise<OperationDTO>;
     /** Replace only the memo, applying the configured tag; empty text explicitly clears it (or leaves only the tag). */
     setMemo(operationId: number, memo: string, expectation: BreakdownMutationExpectation): Promise<OperationDTO>;
+    /** Unvalidate only an explicitly validated, unlocked operation; preserve memo and all accounting semantics. */
+    unvalidate(operationId: number, expectation: BreakdownMutationExpectation): Promise<OperationDTO>;
     getAvailableCategories(
         operationId: number,
         breakdownId: number,
@@ -683,13 +686,11 @@ function assertExpectation(expectation: BreakdownMutationExpectation, allowedKey
     }
 }
 
-function assertMutationOperation(raw: unknown, companyId: number, operationId: number, expectation: BreakdownMutationExpectation): asserts raw is RawOperationDTO {
+function assertOperationScope(raw: unknown, companyId: number, operationId: number, expectation: BreakdownMutationExpectation): asserts raw is RawOperationDTO {
     if (!isRecord(expectation) || !isTrimmedNonBlankText(expectation.expectedUpdatedAt, 100)
         || !isRecord(raw) || raw.id !== operationId || raw.companyId !== companyId || !Array.isArray(raw.breakdowns)
-        || raw.validated === true || (raw.validatedAt !== undefined && raw.validatedAt !== null)
-        || raw.manuallyLocked === true || raw.lockedByDate === true || raw.isDraft === true
         || raw.updatedAt !== expectation.expectedUpdatedAt) {
-        throw new Error("Operation is stale, validated, locked, draft, or not editable.");
+        throw new Error("Operation is stale, outside the requested scope, or missing an unambiguous version token or breakdown list.");
     }
     const ids = new Set<number>();
     for (const line of raw.breakdowns) {
@@ -699,6 +700,14 @@ function assertMutationOperation(raw: unknown, companyId: number, operationId: n
             throw new Error("Operation breakdown scope is ambiguous.");
         }
         ids.add(line.id);
+    }
+}
+
+function assertMutationOperation(raw: unknown, companyId: number, operationId: number, expectation: BreakdownMutationExpectation): asserts raw is RawOperationDTO {
+    assertOperationScope(raw, companyId, operationId, expectation);
+    if (raw.validated === true || (raw.validatedAt !== undefined && raw.validatedAt !== null)
+        || raw.manuallyLocked === true || raw.lockedByDate === true || raw.isDraft === true) {
+        throw new Error("Operation is stale, validated, locked, draft, or not editable.");
     }
 }
 
@@ -773,10 +782,10 @@ function operationSemantics(raw: RawOperationDTO): Record<string, unknown> {
     return stable;
 }
 
-/** Memo edits permit no accounting/display normalization except operation and line timestamps. */
-function memoOperationSemantics(raw: RawOperationDTO): unknown {
+/** Narrow operation edits permit no unrelated normalization except operation and line timestamps. */
+function strictOperationSemantics(raw: RawOperationDTO, mutableFields: string[]): unknown {
     const stable = { ...raw } as Record<string, unknown>;
-    for (const field of ['memo', 'createdAt', 'updatedAt']) delete stable[field];
+    for (const field of [...mutableFields, 'createdAt', 'updatedAt']) delete stable[field];
     stable.breakdowns = raw.breakdowns!.map(line => {
         const copy = { ...line } as Record<string, unknown>;
         delete copy.createdAt;
@@ -1032,12 +1041,54 @@ export const makeOperationEndpoint = (client: Client, { companyId }: OperationEn
                 const persisted = await getRawOne(operationId);
                 assertMutationOperation(persisted, companyId, operationId, { expectedUpdatedAt: persisted.updatedAt! });
                 if (persisted.memo !== finalMemo
-                    || !equalJson(memoOperationSemantics(before), memoOperationSemantics(persisted))) {
+                    || !equalJson(strictOperationSemantics(before, ['memo']), strictOperationSemantics(persisted, ['memo']))) {
                     throw new Error(OPERATION_MEMO_UNVERIFIED_POST);
                 }
                 return mapOperation(persisted);
             } catch {
                 throw new Error(OPERATION_MEMO_UNVERIFIED_POST);
+            }
+        },
+        unvalidate: async (operationId, expectation) => {
+            assertPositiveSafeInteger(operationId);
+            assertExpectation(expectation);
+            const before = await getRawOne(operationId);
+            assertOperationScope(before, companyId, operationId, expectation);
+            if (before.validated !== true || !isTrimmedNonBlankText(before.validatedAt, 100)
+                || before.manuallyLocked !== false || before.lockedByDate !== false || before.isDraft !== false
+                || before.deleted !== false || before.excluded !== false
+                || typeof before.type !== 'string' || before.type.length === 0 || /miscellaneous/i.test(before.type)
+                || /^invoice:/.test(before.type)) {
+                throw new Error("Operation unvalidation requires an explicitly validated, unlocked, supported operation.");
+            }
+            // These three computed descriptors are false while validated. The
+            // legacy behavior and captured live bank diff prove the post-state:
+            // unlocked non-counterparts become editable, except mileage lines.
+            // Assert exact booleans, never omit descriptor fields from comparison.
+            const expectedAfter = { ...before, breakdowns: before.breakdowns!.map(line => {
+                if (typeof line.isCounterpart !== 'boolean'
+                    || line.isAmountEditable !== false || line.isCategoryEditable !== false || line.isDeletable !== false) {
+                    throw new Error("Operation unvalidation breakdown editability is unavailable or unsupported.");
+                }
+                const editable = !line.isCounterpart && before.type !== 'kilometricIndemnity';
+                return { ...line, isAmountEditable: editable, isCategoryEditable: editable, isDeletable: editable };
+            }) };
+            // Provider evidence: OperationResource.invalidate changes validated
+            // only, then Resource.save POSTs the full snapshot. The server's
+            // validated setter clears validatedAt. Never assign that timestamp
+            // ourselves, append a memo tag, or combine an accounting edit here.
+            await client.postVoid(`${baseUrl}/${operationId}`, { ...before, validated: false });
+            try {
+                const persisted = await getRawOne(operationId);
+                assertMutationOperation(persisted, companyId, operationId, { expectedUpdatedAt: persisted.updatedAt! });
+                if (persisted.validated !== false || persisted.validatedAt !== null
+                    || !equalJson(strictOperationSemantics(expectedAfter, ['validated', 'validatedAt']),
+                        strictOperationSemantics(persisted, ['validated', 'validatedAt']))) {
+                    throw new Error(OPERATION_UNVALIDATE_UNVERIFIED_POST);
+                }
+                return mapOperation(persisted);
+            } catch {
+                throw new Error(OPERATION_UNVALIDATE_UNVERIFIED_POST);
             }
         },
         addBreakdownDetail: async (operationId, expectation) => {
